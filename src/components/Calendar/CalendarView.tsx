@@ -105,10 +105,14 @@ export default function CalendarView({
 
   const generateTimeSlots = (date: Date) => {
     const slots = [];
-    // Get events for the selected date
-    const dateEvents = events.filter(event => 
-      moment(event.start).format('YYYY-MM-DD') === moment(date).format('YYYY-MM-DD')
-    );
+    // Get events that overlap with the selected date
+    const dateEvents = events.filter(event => {
+      const selectedDate = moment(date).format('YYYY-MM-DD');
+      const eventStart = moment(event.start).format('YYYY-MM-DD');
+      const eventEnd = moment(event.end).format('YYYY-MM-DD');
+      // Check if the selected date falls within the event's date range
+      return selectedDate >= eventStart && selectedDate <= eventEnd;
+    });
 
     for (let i = 1; i <= 7; i++) {
       const slotName = `SLOT ${i}`;
