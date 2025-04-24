@@ -92,7 +92,7 @@ export default function Register() {
       <div className="bg-white rounded-lg w-full h-screen flex">
         {/* Left side - Registration Form */}
         <div className="w-1/2 p-10">
-          <h2 className="text-sm text-gray-500 mb-2">Hourglass</h2>
+          <h2 className="text-sm text-gray-500 mb-2">CourseTrack</h2>
           <h1 className="text-2xl font-bold mb-1">Get started</h1>
           <p className="text-sm text-gray-500 mb-6">Create a new account</p>
 

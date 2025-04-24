@@ -15,7 +15,7 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h2 className="text-sm text-gray-500 mb-2">Hourglass</h2>
+        <h2 className="text-sm text-gray-500 mb-2">CourseTrack</h2>
         <h1 className="text-2xl font-bold mb-1">Reset your password</h1>
         <p className="text-sm text-gray-500 mb-6">
           Type in your email address and we will allow you to reset your password

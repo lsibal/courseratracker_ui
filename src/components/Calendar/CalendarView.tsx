@@ -341,7 +341,7 @@ export default function CalendarView({
           >
             <Menu size={20} />
           </button>
-          <h1 className="text-xl font-semibold">Hourglass</h1>
+          <h1 className="text-xl font-semibold">CourseTrack</h1>
         </div>
         
         <div className="flex items-center space-x-2">
@@ -374,7 +374,10 @@ export default function CalendarView({
           </div>
           
           <button 
-            onClick={() => setShowCreateModal(true)} 
+            onClick={() => {
+              setSelectedDate(new Date()); // Set to current date when clicking Add Event
+              setShowSlotModal(true);      // Show slot selection first
+            }} 
             className="ml-4 bg-blue-500 text-white px-3 py-1 rounded-md flex items-center"
           >
             <Plus size={18} className="mr-1" /> Add Event
