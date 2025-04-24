@@ -10,6 +10,7 @@ import { auth } from '../firebase/config';
 
 interface AuthContextType {
   user: User | null;
+  currentUser: User | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -20,11 +21,13 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
+      setCurrentUser(user);
       setLoading(false);
     });
 
@@ -56,7 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const value = {
-    user,
+    user: currentUser,
+    currentUser,
     login,
     register,
     logout,

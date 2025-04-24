@@ -21,13 +21,13 @@ const localizer = momentLocalizer(moment);
 
 // Color mapping for slots
 const SLOT_COLORS = {
-  'SLOT 1': '#FF6B6B',
-  'SLOT 2': '#4ECDC4',
-  'SLOT 3': '#45B7D1',
-  'SLOT 4': '#96CEB4',
-  'SLOT 5': '#FFEEAD',
-  'SLOT 6': '#D4A5A5',
-  'SLOT 7': '#9B59B6'
+  'SLOT 1': '#FF6B6B', // Coral red
+  'SLOT 2': '#4ECDC4', // Turquoise
+  'SLOT 3': '#45B7D1', // Sky blue
+  'SLOT 4': '#96CEB4', // Sage green
+  'SLOT 5': '#FF9000', // Orange
+  'SLOT 6': '#D4A5A5', // Dusty rose
+  'SLOT 7': '#9B59B6'  // Purple
 } as const;
 
 // Define event interface
@@ -40,6 +40,7 @@ interface Event {
   timeslot: Timeslot;
   resources: Resource[];
   attendees?: number;
+  createdBy?: string; // Add this property
 }
 
 interface Timeslot {
@@ -60,9 +61,14 @@ interface Course {
 interface CalendarViewProps {
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
+  filterEvents: (events: any[]) => any[];  // Add this prop
 }
 
-export default function CalendarView({ isSidebarOpen, toggleSidebar }: CalendarViewProps) {
+export default function CalendarView({ 
+  isSidebarOpen, 
+  toggleSidebar,
+  filterEvents 
+}: CalendarViewProps) {
   const [date, setDate] = useState<Date>(new Date());
   const [view, setView] = useState<string>('month');
   const [isSimplifiedView, setIsSimplifiedView] = useState<boolean>(false);
@@ -81,7 +87,7 @@ export default function CalendarView({ isSidebarOpen, toggleSidebar }: CalendarV
   const [endTime, setEndTime] = useState<string>('');
 
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, currentUser } = useAuth(); // Add currentUser
 
   const handleLogout = () => {
     logout();
@@ -139,42 +145,110 @@ export default function CalendarView({ isSidebarOpen, toggleSidebar }: CalendarV
   const handleCreateEvent = async () => {
     if (!selectedDate || !selectedSlot || !startDate || !endDate || !selectedCourse) return;
   
-    const startDateTime = new Date(`${startDate}T${startTime}`);
-    const endDateTime = new Date(`${endDate}T${endTime}`);
+    const startDateTime = new Date(`${startDate}T${startTime || '00:00'}`);
+    const endDateTime = new Date(`${endDate}T${endTime || '23:59'}`);
   
-    const newEvent: Event = {
-      id: Date.now().toString(),
-      title: selectedCourse,
-      slotNumber: selectedSlot as keyof typeof SLOT_COLORS,
-      start: startDateTime,
-      end: endDateTime,
-      timeslot: {
-        id: parseInt(selectedSlot.split(' ')[1]),
-        start: startDateTime.toISOString(), // Store as ISO string
-        end: endDateTime.toISOString()      // Store as ISO string
-      },
-      resources: [{ id: 7 }]
-    };
+    // Generate unique ID for the event
+    const eventId = Date.now().toString();
   
+    // First, create the schedule in the API
     try {
+      // Format the data as expected by the API
+      const scheduleData = {
+        timeslot: {
+          id: parseInt(selectedSlot.split(' ')[1]), // Extract slot number
+          start: startDateTime.toISOString(),
+          end: endDateTime.toISOString()
+        },
+        resources: [{ id: 7 }] // Assuming resourceId is 7 as used in example
+      };
+  
+      console.log('Sending schedule data to API:', scheduleData);
+      
+      // Send the request to create a schedule
+      const response = await api.post('/api/schedules', scheduleData);
+      console.log('Schedule creation response:', response.data);
+      
+      // Create a new event object for the UI
+      const newEvent: Event = {
+        id: eventId,
+        title: selectedCourse,
+        slotNumber: selectedSlot as keyof typeof SLOT_COLORS,
+        start: startDateTime,
+        end: endDateTime,
+        timeslot: {
+          id: parseInt(selectedSlot.split(' ')[1]),
+          start: startDateTime.toISOString(),
+          end: endDateTime.toISOString()
+        },
+        resources: [{ id: 7 }],
+        attendees: response.data?.attendees || 0,
+        createdBy: currentUser?.uid // Add creator info
+      };
+      
+      // Store the event in Firebase for persistence
       const eventRef = ref(db, `events/${newEvent.id}`);
-      // Store dates as ISO strings in Firebase
       await set(eventRef, {
         ...newEvent,
         start: newEvent.start.toISOString(),
         end: newEvent.end.toISOString()
       });
       
+      // Update the UI with the new event
       setEvents([...events, newEvent]);
       setShowCreateModal(false);
+      
       // Reset form
       setSelectedCourse('');
       setStartDate('');
       setStartTime('');
       setEndDate('');
       setEndTime('');
+      
     } catch (error) {
-      console.error('Failed to save event:', error);
+      console.error('Error creating schedule:', error);
+      
+      // Create a local event anyway even if API fails
+      const fallbackEvent: Event = {
+        id: eventId,
+        title: selectedCourse,
+        slotNumber: selectedSlot as keyof typeof SLOT_COLORS,
+        start: startDateTime,
+        end: endDateTime,
+        timeslot: {
+          id: parseInt(selectedSlot.split(' ')[1]),
+          start: startDateTime.toISOString(),
+          end: endDateTime.toISOString()
+        },
+        resources: [{ id: 7 }],
+        createdBy: currentUser?.uid // Add creator info
+      };
+      
+      // Save to Firebase even if API fails
+      try {
+        const eventRef = ref(db, `events/${fallbackEvent.id}`);
+        await set(eventRef, {
+          ...fallbackEvent,
+          start: fallbackEvent.start.toISOString(),
+          end: fallbackEvent.end.toISOString()
+        });
+        
+        setEvents([...events, fallbackEvent]);
+        setShowCreateModal(false);
+        
+        // Reset form
+        setSelectedCourse('');
+        setStartDate('');
+        setStartTime('');
+        setEndDate('');
+        setEndTime('');
+        
+        // Let the user know what happened
+        alert('Could not save to Hourglass API, but saved locally');
+      } catch (fbError) {
+        console.error('Failed to save event to Firebase:', fbError);
+        alert('Failed to create event. Please try again.');
+      }
     }
   };
 
@@ -189,12 +263,10 @@ export default function CalendarView({ isSidebarOpen, toggleSidebar }: CalendarV
         
         snapshot.forEach((childSnapshot) => {
           const event = childSnapshot.val();
-          // Fix date conversion by handling both string and timestamp formats
           const reconstructedEvent: Event = {
             id: event.id,
             title: event.title,
             slotNumber: event.slotNumber,
-            // Ensure proper Date object creation
             start: typeof event.start === 'string' ? new Date(event.start) : new Date(event.start),
             end: typeof event.end === 'string' ? new Date(event.end) : new Date(event.end),
             timeslot: {
@@ -203,18 +275,15 @@ export default function CalendarView({ isSidebarOpen, toggleSidebar }: CalendarV
               end: event.timeslot.end
             },
             resources: event.resources || [],
-            attendees: event.attendees
+            attendees: event.attendees,
+            createdBy: event.createdBy || currentUser?.uid // Add creator info
           };
   
-          // Validate the date objects
           if (!isNaN(reconstructedEvent.start.getTime()) && !isNaN(reconstructedEvent.end.getTime())) {
             fetchedEvents.push(reconstructedEvent);
-          } else {
-            console.error('Invalid date found for event:', event.id);
           }
         });
         
-        // Sort events by start date
         fetchedEvents.sort((a, b) => a.start.getTime() - b.start.getTime());
         setEvents(fetchedEvents);
       });
@@ -258,15 +327,12 @@ export default function CalendarView({ isSidebarOpen, toggleSidebar }: CalendarV
     
     switch(view) {
       case 'month':
-        // Navigate by month
         newDate.setMonth(date.getMonth() + (action === 'NEXT' ? 1 : -1));
         break;
       case 'week':
-        // Navigate by week (7 days)
         newDate.setDate(date.getDate() + (action === 'NEXT' ? 7 : -7));
         break;
       case 'day':
-        // Navigate by day
         newDate.setDate(date.getDate() + (action === 'NEXT' ? 1 : -1));
         break;
     }
@@ -297,6 +363,8 @@ export default function CalendarView({ isSidebarOpen, toggleSidebar }: CalendarV
     setSelectedEvent(event);
     setShowViewModal(true);
   };
+
+  const displayEvents = filterEvents(events);
 
   return (
     <div className="h-screen flex flex-col">
@@ -334,12 +402,6 @@ export default function CalendarView({ isSidebarOpen, toggleSidebar }: CalendarV
           
           {/* View toggle section */}
           <div className="ml-4 border border-gray-200 rounded-md overflow-hidden flex">
-            {/* <button 
-              onClick={() => setView('month')} 
-              className={`px-3 py-1 ${view === 'month' ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}
-            >
-              Month
-            </button> */}
             <button 
               onClick={() => handleNavigate('TODAY')} 
               className="px-3 py-1 bg-gray-100 hover:bg-gray-200"
@@ -361,7 +423,7 @@ export default function CalendarView({ isSidebarOpen, toggleSidebar }: CalendarV
       <div className={`flex-1 ${isSimplifiedView ? 'simplified-view' : ''}`}>
         <Calendar
           localizer={localizer}
-          events={events}
+          events={displayEvents} // Use filtered events here
           startAccessor="start"
           endAccessor="end"
           style={{ height: '100%' }}
@@ -381,16 +443,19 @@ export default function CalendarView({ isSidebarOpen, toggleSidebar }: CalendarV
       {/* Slot Selection Modal */}
       {showSlotModal && selectedDate && (
         <div className="fixed inset-0 bg-[#00000098] bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96">
-            <div className="flex justify-between items-center mb-4">
+          <div className="bg-white rounded-lg p-6 w-96 relative">
+            <button 
+              onClick={() => setShowSlotModal(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors"
+              aria-label="Close modal"
+            >
+              <X size={20} />
+            </button>
+            <div className="mb-4">
               <h2 className="text-xl font-semibold">Available Slots</h2>
-              <button 
-                onClick={() => setShowSlotModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-                aria-label="Close modal"
-              >
-                <X size={20} />
-              </button>
+              <p className="text-sm text-gray-500 mt-1">
+                {moment(selectedDate).format('dddd, MMMM D, YYYY')}
+              </p>
             </div>
             <div className="space-y-2">
               {generateTimeSlots(selectedDate).map(({ name, event }) => (
