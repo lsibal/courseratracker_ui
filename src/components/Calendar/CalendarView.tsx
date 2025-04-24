@@ -8,7 +8,8 @@ import {
   Menu, 
   Plus, 
   X, 
-  Edit 
+  Edit,
+  User 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -148,33 +149,16 @@ export default function CalendarView({
 
   const handleCreateEvent = async () => {
     if (!selectedDate || !selectedSlot || !startDate || !endDate || !selectedCourse) return;
-  
+
     const startDateTime = new Date(`${startDate}T${startTime || '00:00'}`);
     const endDateTime = new Date(`${endDate}T${endTime || '23:59'}`);
-  
-    // Generate unique ID for the event
-    const eventId = Date.now().toString();
-  
-    // First, create the schedule in the API
+    
+    // Use existing ID if editing, otherwise create new one
+    const eventId = selectedEvent ? selectedEvent.id : Date.now().toString();
+
     try {
-      // Format the data as expected by the API
-      const scheduleData = {
-        timeslot: {
-          id: parseInt(selectedSlot.split(' ')[1]), // Extract slot number
-          start: startDateTime.toISOString(),
-          end: endDateTime.toISOString()
-        },
-        resources: [{ id: 7 }] // Assuming resourceId is 7 as used in example
-      };
-  
-      console.log('Sending schedule data to API:', scheduleData);
-      
-      // Send the request to create a schedule
-      const response = await api.post('/api/schedules', scheduleData);
-      console.log('Schedule creation response:', response.data);
-      
-      // Create a new event object for the UI
-      const newEvent: Event = {
+      // Create event object
+      const eventData = {
         id: eventId,
         title: selectedCourse,
         slotNumber: selectedSlot as keyof typeof SLOT_COLORS,
@@ -186,73 +170,39 @@ export default function CalendarView({
           end: endDateTime.toISOString()
         },
         resources: [{ id: 7 }],
-        attendees: response.data?.attendees || 0,
-        createdBy: currentUser?.uid // Add creator info
+        createdBy: selectedEvent ? selectedEvent.createdBy : currentUser?.uid // Preserve original creator
       };
-      
-      // Store the event in Firebase for persistence
-      const eventRef = ref(db, `events/${newEvent.id}`);
+
+      // Reference to Firebase
+      const eventRef = ref(db, `events/${eventId}`);
+
+      // Update or create the event
       await set(eventRef, {
-        ...newEvent,
-        start: newEvent.start.toISOString(),
-        end: newEvent.end.toISOString()
+        ...eventData,
+        start: eventData.start.toISOString(),
+        end: eventData.end.toISOString()
       });
-      
-      // Update the UI with the new event
-      setEvents([...events, newEvent]);
+
+      // Update local state
+      if (selectedEvent) {
+        setEvents(events.map(e => e.id === eventId ? eventData : e));
+      } else {
+        setEvents([...events, eventData]);
+      }
+
+      // Reset form and close modal
       setShowCreateModal(false);
-      
-      // Reset form
+      setSelectedEvent(null);
       setSelectedCourse('');
       setStartDate('');
       setStartTime('');
       setEndDate('');
       setEndTime('');
-      
+      setSelectedSlot('');
+
     } catch (error) {
-      console.error('Error creating schedule:', error);
-      
-      // Create a local event anyway even if API fails
-      const fallbackEvent: Event = {
-        id: eventId,
-        title: selectedCourse,
-        slotNumber: selectedSlot as keyof typeof SLOT_COLORS,
-        start: startDateTime,
-        end: endDateTime,
-        timeslot: {
-          id: parseInt(selectedSlot.split(' ')[1]),
-          start: startDateTime.toISOString(),
-          end: endDateTime.toISOString()
-        },
-        resources: [{ id: 7 }],
-        createdBy: currentUser?.uid // Add creator info
-      };
-      
-      // Save to Firebase even if API fails
-      try {
-        const eventRef = ref(db, `events/${fallbackEvent.id}`);
-        await set(eventRef, {
-          ...fallbackEvent,
-          start: fallbackEvent.start.toISOString(),
-          end: fallbackEvent.end.toISOString()
-        });
-        
-        setEvents([...events, fallbackEvent]);
-        setShowCreateModal(false);
-        
-        // Reset form
-        setSelectedCourse('');
-        setStartDate('');
-        setStartTime('');
-        setEndDate('');
-        setEndTime('');
-        
-        // Let the user know what happened
-        alert('Could not save to Hourglass API, but saved locally');
-      } catch (fbError) {
-        console.error('Failed to save event to Firebase:', fbError);
-        alert('Failed to create event. Please try again.');
-      }
+      console.error('Error saving event:', error);
+      alert('Failed to save event. Please try again.');
     }
   };
 
@@ -368,6 +318,15 @@ export default function CalendarView({
     setShowViewModal(true);
   };
 
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only close if clicking the overlay itself, not its children
+    if (e.target === e.currentTarget) {
+      setShowSlotModal(false);
+      setShowCreateModal(false);
+      setShowViewModal(false);
+    }
+  };
+
   const displayEvents = filterEvents(events);
 
   return (
@@ -446,7 +405,10 @@ export default function CalendarView({
 
       {/* Slot Selection Modal */}
       {showSlotModal && selectedDate && (
-        <div className="fixed inset-0 bg-[#00000098] bg-opacity-50 flex items-center justify-center z-50">
+        <div 
+          className="fixed inset-0 bg-[#00000098] bg-opacity-50 flex items-center justify-center z-50"
+          onClick={handleOverlayClick}
+        >
           <div className="bg-white rounded-lg p-6 w-96 relative">
             <button 
               onClick={() => setShowSlotModal(false)}
@@ -490,7 +452,10 @@ export default function CalendarView({
 
       {/* Create Event Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-[#00000098] flex items-center justify-center z-50">
+        <div 
+          className="fixed inset-0 bg-[#00000098] flex items-center justify-center z-50"
+          onClick={handleOverlayClick}
+        >
           <div className="bg-white rounded-lg p-6 w-96 relative">
             <button 
               onClick={() => setShowCreateModal(false)}
@@ -574,36 +539,71 @@ export default function CalendarView({
 
       {/* View Event Modal */}
       {showViewModal && selectedEvent && (
-        <div className="fixed inset-0 bg-[#00000098] bg-opacity-50 flex items-center justify-center z-50">
+        <div 
+          className="fixed inset-0 bg-[#00000098] bg-opacity-50 flex items-center justify-center z-50"
+          onClick={handleOverlayClick}
+        >
           <div className="bg-white rounded-lg p-6 w-96 relative">
-            <button 
-              onClick={() => setShowViewModal(false)}
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
-              aria-label="Close modal"
-            >
-              <X size={20} />
-            </button>
-            <div className="mb-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">{selectedEvent.title}</h2>
-                <button className="text-blue-500" aria-label="Edit event">
-                  <Edit size={18} />
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">{selectedEvent.title}</h2>
+              <div className="flex items-center space-x-2">
+                {/* Only show edit button if current user is the creator */}
+                {currentUser?.uid === selectedEvent.createdBy && (
+                  <button 
+                    onClick={() => {
+                      setShowViewModal(false);
+                      setShowCreateModal(true);
+                      setSelectedCourse(selectedEvent.title);
+                      setStartDate(moment(selectedEvent.start).format('YYYY-MM-DD'));
+                      setStartTime(moment(selectedEvent.start).format('HH:mm'));
+                      setEndDate(moment(selectedEvent.end).format('YYYY-MM-DD'));
+                      setEndTime(moment(selectedEvent.end).format('HH:mm'));
+                      setSelectedSlot(selectedEvent.slotNumber);
+                    }}
+                    className="text-blue-500 hover:text-blue-600"
+                    aria-label="Edit event"
+                  >
+                    <Edit size={18} />
+                  </button>
+                )}
+                <button 
+                  onClick={() => setShowViewModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                  aria-label="Close modal"
+                >
+                  <X size={20} />
                 </button>
               </div>
-              <div className="text-sm text-gray-500">
-                {moment(selectedEvent.start).format('MMMM D')} - {moment(selectedEvent.end).format('MMMM D')}
-              </div>
             </div>
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <CalendarIcon size={18} className="mr-2 text-gray-500" />
-                <span>{moment(selectedEvent.start).format('dddd, MMMM D')}</span>
+
+            <div className="space-y-4">
+              {/* Slot info */}
+              <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
+                <div className="h-4 w-4 rounded-full" style={{ 
+                  backgroundColor: SLOT_COLORS[selectedEvent.slotNumber] 
+                }} />
+                <span className="font-medium">{selectedEvent.slotNumber}</span>
               </div>
-              <div className="flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                </svg>
-                <span>{selectedEvent.attendees || 0} attendees</span>
+
+              {/* Timeslot info */}
+              <div className="space-y-2">
+                <div className="flex items-center text-gray-600">
+                  <CalendarIcon size={18} className="mr-2" />
+                  <span>
+                    {moment(selectedEvent.start).format('MMM D')} - {moment(selectedEvent.end).format('MMM D, YYYY')}
+                  </span>
+                </div>
+                <div className="flex items-center text-gray-600 ml-6">
+                  <span>
+                    {moment(selectedEvent.start).format('h:mm A')} - {moment(selectedEvent.end).format('h:mm A')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Creator info */}
+              <div className="flex items-center text-gray-600 pt-2 border-t">
+                <User size={18} className="mr-2" />
+                <span>Created by: {selectedEvent.createdBy}</span>
               </div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { Calendar, LogOut, Filter } from 'lucide-react';
+import { Calendar, LogOut, Filter, Edit, Calendar as CalendarIcon, X, User } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +18,11 @@ interface SlotEvent {
   end: string;
 }
 
+interface ViewEventModalProps {
+  event: SlotEvent;
+  onClose: () => void;
+}
+
 // Color mapping for slots
 const SLOT_COLORS = {
   'SLOT 1': '#FF6B6B', // Coral red
@@ -29,6 +34,67 @@ const SLOT_COLORS = {
   'SLOT 7': '#9B59B6'  // Purple
 } as const;
 
+const ViewEventModal = ({ event, onClose }: ViewEventModalProps) => {
+  return (
+    <div 
+      className="fixed inset-0 bg-[#00000098] bg-opacity-50 flex items-center justify-center z-50"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-white rounded-lg p-6 w-96 relative">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">{event.title}</h2>
+          <div className="flex items-center space-x-2">
+            <button 
+              className="text-blue-500 hover:text-blue-600"
+              aria-label="Edit event"
+            >
+              <Edit size={18} />
+            </button>
+            <button 
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+              aria-label="Close modal"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {/* Slot info */}
+          <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
+            <div className="h-4 w-4 rounded-full" style={{ 
+              backgroundColor: SLOT_COLORS[event.slotNumber] 
+            }} />
+            <span className="font-medium">{event.slotNumber}</span>
+          </div>
+
+          {/* Timeslot info */}
+          <div className="space-y-2">
+            <div className="flex items-center text-gray-600">
+              <CalendarIcon size={18} className="mr-2" />
+              <span>
+                {moment(event.start).format('MMM D')} - {moment(event.end).format('MMM D, YYYY')}
+              </span>
+            </div>
+            <div className="flex items-center text-gray-600 ml-6">
+              <span>
+                {moment(event.start).format('h:mm A')} - {moment(event.end).format('h:mm A')}
+              </span>
+            </div>
+          </div>
+
+          {/* Creator info */}
+          <div className="flex items-center text-gray-600 pt-2 border-t">
+            <User size={18} className="mr-2" />
+            <span>Created by: {event.createdBy}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
   const navigate = useNavigate();
   const { logout, currentUser } = useAuth();
@@ -37,6 +103,7 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
     allSchedules: false
   });
   const [slotEvents, setSlotEvents] = useState<Record<string, SlotEvent[]>>({});
+  const [selectedEvent, setSelectedEvent] = useState<SlotEvent | null>(null);
 
   useEffect(() => {
     const db = getDatabase();
@@ -92,6 +159,10 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
 
   const formatDateRange = (start: string, end: string) => {
     return `${moment(start).format('MMM D')} - ${moment(end).format('MMM D')}`;
+  };
+
+  const handleEventClick = (event: SlotEvent) => {
+    setSelectedEvent(event);
   };
 
   return (
@@ -156,7 +227,11 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
                     </div>
                     <div className="p-2 space-y-2 hover:bg-gray-50 transition-colors duration-200">
                       {filteredEvents.map((event, index) => (
-                        <div key={index} className="text-xs space-y-1">
+                        <div 
+                          key={index} 
+                          className="text-xs space-y-1 cursor-pointer p-2 rounded hover:bg-gray-100"
+                          onClick={() => handleEventClick(event)}
+                        >
                           <div className="font-medium">{event.title}</div>
                           <div className="text-gray-500">{formatDateRange(event.start, event.end)}</div>
                           <div className="text-gray-400 truncate">{event.createdBy}</div>
@@ -186,6 +261,12 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
             </button>
           </div>
         </div>
+      )}
+      {selectedEvent && (
+        <ViewEventModal 
+          event={selectedEvent} 
+          onClose={() => setSelectedEvent(null)} 
+        />
       )}
     </div>
   );
