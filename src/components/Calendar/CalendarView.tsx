@@ -14,7 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/server';
-import { getDatabase, ref, set, query, orderByChild, onValue } from 'firebase/database';
+import { ref, set, query, orderByChild, onValue } from 'firebase/database';
 import { db } from '../../firebase/database';
 
 // Setup localizer
@@ -83,9 +83,9 @@ export default function CalendarView({
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
-  const [startTime, setStartTime] = useState<string>('');
+  // const [startTime, setStartTime] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [endTime, setEndTime] = useState<string>('');
+  // const [endTime, setEndTime] = useState<string>('');
 
   const navigate = useNavigate();
   const { logout, currentUser } = useAuth(); // Add currentUser
@@ -150,14 +150,59 @@ export default function CalendarView({
   const handleCreateEvent = async () => {
     if (!selectedDate || !selectedSlot || !startDate || !endDate || !selectedCourse) return;
 
-    const startDateTime = new Date(`${startDate}T${startTime || '00:00'}`);
-    const endDateTime = new Date(`${endDate}T${endTime || '23:59'}`);
+    // Set both times to 00:00
+    const startDateTime = new Date(`${startDate}T00:00:00`);
+    const endDateTime = new Date(`${endDate}T00:00:00`);
     
-    // Use existing ID if editing, otherwise create new one
+    // Validate date range
+    if (endDateTime <= startDateTime) {
+      alert('End date must be after start date');
+      return;
+    }
+
     const eventId = selectedEvent ? selectedEvent.id : Date.now().toString();
 
     try {
-      // Create event object
+      // Check for overlapping events in the same slot
+      const overlappingEvents = events.filter(event => {
+        // Only check events in the same slot
+        if (event.slotNumber !== selectedSlot) return false;
+        
+        // Skip checking against self when editing
+        if (selectedEvent && event.id === selectedEvent.id) return false;
+
+        const eventStart = new Date(event.start);
+        const eventEnd = new Date(event.end);
+
+        // Check for ANY overlap between date ranges
+        return (
+          // New event starts before existing event ends AND
+          // New event ends after existing event starts
+          (startDateTime <= eventEnd && endDateTime >= eventStart)
+        );
+      });
+
+      // Log overlapping events for debugging
+      if (overlappingEvents.length > 0) {
+        console.log('Overlapping events found:', overlappingEvents);
+        
+        // Sort overlapping events by start date for clearer error message
+        const sortedOverlaps = overlappingEvents.sort((a, b) => 
+          new Date(a.start).getTime() - new Date(b.start).getTime()
+        );
+
+        // Show all conflicting dates in the error message
+        const conflicts = sortedOverlaps.map(event => 
+          `${moment(event.start).format('MMM D')} to ${moment(event.end).format('MMM D, YYYY')}`
+        ).join(', ');
+
+        throw new Error(
+          `Slot ${selectedSlot} already has bookings during these dates: ${conflicts}. ` +
+          `Please choose different dates or a different slot.`
+        );
+      }
+
+      // If we reach here, there are no overlaps - proceed with saving
       const eventData = {
         id: eventId,
         title: selectedCourse,
@@ -170,7 +215,7 @@ export default function CalendarView({
           end: endDateTime.toISOString()
         },
         resources: [{ id: 7 }],
-        createdBy: selectedEvent ? selectedEvent.createdBy : currentUser?.uid // Preserve original creator
+        createdBy: selectedEvent ? selectedEvent.createdBy : currentUser?.uid
       };
 
       // Reference to Firebase
@@ -195,14 +240,14 @@ export default function CalendarView({
       setSelectedEvent(null);
       setSelectedCourse('');
       setStartDate('');
-      setStartTime('');
+      // setStartTime('');
       setEndDate('');
-      setEndTime('');
+      // setEndTime('');
       setSelectedSlot('');
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving event:', error);
-      alert('Failed to save event. Please try again.');
+      alert(error.message || 'Failed to save event. Please try again.');
     }
   };
 
@@ -467,7 +512,7 @@ export default function CalendarView({
             >
               <X size={20} />
             </button>
-            <h2 className="text-xl font-semibold mb-4">Enter course name</h2>
+            <h2 className="text-xl font-semibold mb-4">Enter course details</h2>
             <div className="space-y-4">
               <div>
                 <label htmlFor="course-name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -488,38 +533,22 @@ export default function CalendarView({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start</label>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                  <input
-                    type="time"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End</label>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                  <input
-                    type="time"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                  />
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
               </div>
               <div className="flex justify-end">
                 <button 
@@ -558,9 +587,7 @@ export default function CalendarView({
                       setShowCreateModal(true);
                       setSelectedCourse(selectedEvent.title);
                       setStartDate(moment(selectedEvent.start).format('YYYY-MM-DD'));
-                      setStartTime(moment(selectedEvent.start).format('HH:mm'));
                       setEndDate(moment(selectedEvent.end).format('YYYY-MM-DD'));
-                      setEndTime(moment(selectedEvent.end).format('HH:mm'));
                       setSelectedSlot(selectedEvent.slotNumber);
                     }}
                     className="text-blue-500 hover:text-blue-600"
@@ -594,11 +621,6 @@ export default function CalendarView({
                   <CalendarIcon size={18} className="mr-2" />
                   <span>
                     {moment(selectedEvent.start).format('MMM D')} - {moment(selectedEvent.end).format('MMM D, YYYY')}
-                  </span>
-                </div>
-                <div className="flex items-center text-gray-600 ml-6">
-                  <span>
-                    {moment(selectedEvent.start).format('h:mm A')} - {moment(selectedEvent.end).format('h:mm A')}
                   </span>
                 </div>
               </div>
