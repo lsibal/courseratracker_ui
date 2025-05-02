@@ -9,7 +9,8 @@ import {
   Plus, 
   X, 
   Edit,
-  User 
+  User,
+  Trash2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -248,6 +249,30 @@ export default function CalendarView({
     } catch (error: any) {
       console.error('Error saving event:', error);
       alert(error.message || 'Failed to save event. Please try again.');
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!window.confirm('Are you sure you want to delete this event?')) {
+      return;
+    }
+  
+    try {
+      // Reference to Firebase
+      const eventRef = ref(db, `events/${eventId}`);
+      
+      // Delete the event
+      await set(eventRef, null);
+      
+      // Update local state
+      setEvents(events.filter(e => e.id !== eventId));
+      
+      // Close the modal
+      setShowViewModal(false);
+      setSelectedEvent(null);
+    } catch (error: any) {
+      console.error('Error deleting event:', error);
+      alert('Failed to delete event. Please try again.');
     }
   };
 
@@ -579,22 +604,30 @@ export default function CalendarView({
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">{selectedEvent.title}</h2>
               <div className="flex items-center space-x-2">
-                {/* Only show edit button if current user is the creator */}
                 {currentUser?.uid === selectedEvent.createdBy && (
-                  <button 
-                    onClick={() => {
-                      setShowViewModal(false);
-                      setShowCreateModal(true);
-                      setSelectedCourse(selectedEvent.title);
-                      setStartDate(moment(selectedEvent.start).format('YYYY-MM-DD'));
-                      setEndDate(moment(selectedEvent.end).format('YYYY-MM-DD'));
-                      setSelectedSlot(selectedEvent.slotNumber);
-                    }}
-                    className="text-blue-500 hover:text-blue-600"
-                    aria-label="Edit event"
-                  >
-                    <Edit size={18} />
-                  </button>
+                  <>
+                    <button 
+                      onClick={() => {
+                        setShowViewModal(false);
+                        setShowCreateModal(true);
+                        setSelectedCourse(selectedEvent.title);
+                        setStartDate(moment(selectedEvent.start).format('YYYY-MM-DD'));
+                        setEndDate(moment(selectedEvent.end).format('YYYY-MM-DD'));
+                        setSelectedSlot(selectedEvent.slotNumber);
+                      }}
+                      className="text-blue-500 hover:text-blue-600"
+                      aria-label="Edit event"
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteEvent(selectedEvent.id)}
+                      className="text-red-500 hover:text-red-600"
+                      aria-label="Delete event"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </>
                 )}
                 <button 
                   onClick={() => setShowViewModal(false)}
