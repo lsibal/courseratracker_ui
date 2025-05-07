@@ -2,11 +2,30 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getDatabase, ref as dbRef, set } from 'firebase/database';
+
+const DEPARTMENTS = {
+  AppDev: 'Application Development',
+  QA: 'Quality Assurance',
+  DMR: 'Digital Media Research',
+  NOC: 'Network Operations Center',
+  Others: 'Other Department'
+} as const;
+
+type Department = keyof typeof DEPARTMENTS;
+
+interface UserProfile {
+  name: string;
+  email: string;
+  department: Department;
+}
 
 export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
+  const [department, setDepartment] = useState<Department>('AppDev');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
@@ -22,7 +41,6 @@ export default function Register() {
   const navigate = useNavigate();
   const { register } = useAuth();
 
-  // Password validation function
   const validatePassword = (password: string) => {
     setPasswordStrength({
       length: password.length >= 8,
@@ -33,22 +51,37 @@ export default function Register() {
     });
   };
 
-  // Update password validation on change
   useEffect(() => {
     validatePassword(password);
   }, [password]);
+
+  const saveUserProfile = async (userId: string) => {
+    const db = getDatabase();
+    const userRef = dbRef(db, `users/${userId}`);
+    
+    const profile: UserProfile = {
+      name,
+      email,
+      department
+    };
+
+    await set(userRef, profile);
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // Check if passwords match
+    if (!name.trim()) {
+      setError('Name is required');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
 
-    // Validate password strength
     const isPasswordStrong = Object.values(passwordStrength).every(Boolean);
     if (!isPasswordStrong) {
       setError('Password does not meet all requirements');
@@ -57,10 +90,16 @@ export default function Register() {
 
     try {
       setLoading(true);
-      await register(email, password);
+      const response = await register(email, password);
+      
+      if (!response || !response.user) {
+        throw new Error('Registration failed - no user returned');
+      }
+
+      await saveUserProfile(response.user.uid);
       navigate('/dashboard');
-    } catch (error) {
-      setError('Failed to create an account.');
+    } catch (error: any) {
+      setError(error.message || 'Failed to create an account.');
       console.error(error);
     } finally {
       setLoading(false);
@@ -90,8 +129,7 @@ export default function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white rounded-lg w-full h-screen flex">
-        {/* Left side - Registration Form */}
-        <div className="w-1/2 p-10">
+        <div className="w-1/2 p-10 overflow-y-auto">
           <h2 className="text-sm text-gray-500 mb-2">CourseTrack</h2>
           <h1 className="text-2xl font-bold mb-1">Get started</h1>
           <p className="text-sm text-gray-500 mb-6">Create a new account</p>
@@ -102,6 +140,41 @@ export default function Register() {
                 {error}
               </div>
             )}
+
+            <div className="mb-4">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                Full Name
+              </label>
+              <input
+                type="text"
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-100 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300"
+                placeholder="John Doe"
+                required
+              />
+            </div>
+
+            <div className="mb-4">
+              <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+                Department
+              </label>
+              <select
+                id="department"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value as Department)}
+                className="w-full px-3 py-2 bg-gray-100 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300"
+                required
+              >
+                {Object.entries(DEPARTMENTS).map(([key, value]) => (
+                  <option key={key} value={key}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="mb-4">
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email
@@ -188,10 +261,8 @@ export default function Register() {
           </div>
         </div>
 
-        {/* Right side - Image/Illustration */}
         <div className="w-full bg-gray-200 rounded-r-lg flex items-center justify-center">
           <div className="w-full h-full flex items-center justify-center">
-            {/* X pattern from the design */}
             <div className="relative w-full h-full">
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-full h-0.5 bg-gray-300 rotate-45 transform origin-center"></div>

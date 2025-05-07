@@ -1,9 +1,10 @@
-import { Calendar, LogOut, Filter, Edit, Calendar as CalendarIcon, X, User } from 'lucide-react';
+import { Calendar, LogOut, Filter, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getDatabase, ref, onValue } from 'firebase/database';
+import { getDatabase, ref, onValue, get } from 'firebase/database';
 import moment from 'moment';
+import EventViewModal from '../Modals/EventViewModal';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface SidebarProps {
 }
 
 interface SlotEvent {
+  id: string;
   slotNumber: string;
   title: string;
   createdBy: string;
@@ -18,9 +20,10 @@ interface SlotEvent {
   end: string;
 }
 
-interface ViewEventModalProps {
-  event: SlotEvent;
-  onClose: () => void;
+interface UserProfile {
+  name: string;
+  email: string;
+  department: string;
 }
 
 // Color mapping for slots
@@ -34,67 +37,6 @@ const SLOT_COLORS = {
   'SLOT 7': '#9B59B6'  // Purple
 } as const;
 
-const ViewEventModal = ({ event, onClose }: ViewEventModalProps) => {
-  return (
-    <div 
-      className="fixed inset-0 bg-[#00000098] bg-opacity-50 flex items-center justify-center z-50"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="bg-white rounded-lg p-6 w-96 relative">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">{event.title}</h2>
-          <div className="flex items-center space-x-2">
-            <button 
-              className="text-blue-500 hover:text-blue-600"
-              aria-label="Edit event"
-            >
-              <Edit size={18} />
-            </button>
-            <button 
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
-              aria-label="Close modal"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {/* Slot info */}
-          <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
-            <div className="h-4 w-4 rounded-full" style={{ 
-              backgroundColor: SLOT_COLORS[event.slotNumber] 
-            }} />
-            <span className="font-medium">{event.slotNumber}</span>
-          </div>
-
-          {/* Timeslot info */}
-          <div className="space-y-2">
-            <div className="flex items-center text-gray-600">
-              <CalendarIcon size={18} className="mr-2" />
-              <span>
-                {moment(event.start).format('MMM D')} - {moment(event.end).format('MMM D, YYYY')}
-              </span>
-            </div>
-            <div className="flex items-center text-gray-600 ml-6">
-              <span>
-                {moment(event.start).format('h:mm A')} - {moment(event.end).format('h:mm A')}
-              </span>
-            </div>
-          </div>
-
-          {/* Creator info */}
-          <div className="flex items-center text-gray-600 pt-2 border-t">
-            <User size={18} className="mr-2" />
-            <span>Created by: {event.createdBy}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
   const navigate = useNavigate();
   const { logout, currentUser } = useAuth();
@@ -104,6 +46,8 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
   });
   const [slotEvents, setSlotEvents] = useState<Record<string, SlotEvent[]>>({});
   const [selectedEvent, setSelectedEvent] = useState<SlotEvent | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [eventCreators, setEventCreators] = useState<Record<string, UserProfile>>({});
 
   useEffect(() => {
     const db = getDatabase();
@@ -121,6 +65,7 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
         const event = childSnapshot.val();
         if (event.slotNumber) {
           events[event.slotNumber].push({
+            id: childSnapshot.key,
             slotNumber: event.slotNumber,
             title: event.title,
             createdBy: event.createdBy,
@@ -135,6 +80,41 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      const db = getDatabase();
+      const userRef = ref(db, `users/${currentUser.uid}`);
+      
+      const unsubscribe = onValue(userRef, (snapshot) => {
+        setUserProfile(snapshot.val());
+      });
+
+      return () => unsubscribe();
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    const db = getDatabase();
+    const uniqueCreatorIds = [...new Set(
+      Object.values(slotEvents)
+        .flat()
+        .map(event => event.createdBy)
+    )];
+
+    uniqueCreatorIds.forEach(async (creatorId) => {
+      if (!eventCreators[creatorId]) {
+        const userRef = ref(db, `users/${creatorId}`);
+        const snapshot = await get(userRef);
+        if (snapshot.exists()) {
+          setEventCreators(prev => ({
+            ...prev,
+            [creatorId]: snapshot.val() as UserProfile
+          }));
+        }
+      }
+    });
+  }, [slotEvents]);
 
   const handleLogout = () => {
     logout();
@@ -234,7 +214,17 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
                         >
                           <div className="font-medium">{event.title}</div>
                           <div className="text-gray-500">{formatDateRange(event.start, event.end)}</div>
-                          <div className="text-gray-400 truncate">{event.createdBy}</div>
+                          <div className="text-gray-400 truncate">
+                            {eventCreators[event.createdBy] ? (
+                              <>
+                                <span>{eventCreators[event.createdBy].name}</span>
+                                <span className="text-gray-400"> • </span>
+                                <span>{eventCreators[event.createdBy].department}</span>
+                              </>
+                            ) : (
+                              'Loading...'
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -246,9 +236,12 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
 
           {/* Footer section - fixed at bottom */}
           <div className="p-5 border-t bg-white">
-            {/* User Info */}
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm font-medium text-gray-700">{currentUser?.email}</p>
+            {/* User Profile */}
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg flex items-center space-x-3">
+              <div>
+                <p className="text-sm font-medium text-gray-700">{userProfile?.name || 'User'}</p>
+                <p className="text-xs text-gray-500">{userProfile?.department}</p>
+              </div>
             </div>
 
             {/* Logout Button */}
@@ -263,9 +256,18 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
         </div>
       )}
       {selectedEvent && (
-        <ViewEventModal 
-          event={selectedEvent} 
-          onClose={() => setSelectedEvent(null)} 
+        <EventViewModal 
+          isOpen={!!selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          event={{
+            ...selectedEvent,
+            start: new Date(selectedEvent.start),
+            end: new Date(selectedEvent.end),
+            slotNumber: selectedEvent.slotNumber as keyof typeof SLOT_COLORS,
+          }}
+          onEdit={() => {}}
+          onDelete={() => {}}
+          canEdit={false}
         />
       )}
     </div>
