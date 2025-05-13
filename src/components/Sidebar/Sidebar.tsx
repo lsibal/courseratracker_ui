@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getDatabase, ref, onValue, get } from 'firebase/database';
 import moment from 'moment';
 import EventViewModal from '../Modals/EventViewModal';
+import { DEPARTMENT_COLORS } from '../Calendar/constants'; // Add this import
 
 interface SidebarProps {
   isOpen: boolean;
@@ -25,17 +26,6 @@ interface UserProfile {
   email: string;
   department: string;
 }
-
-// Color mapping for slots
-const SLOT_COLORS = {
-  'SLOT 1': '#FF6B6B', // Coral red
-  'SLOT 2': '#4ECDC4', // Turquoise
-  'SLOT 3': '#45B7D1', // Sky blue
-  'SLOT 4': '#96CEB4', // Sage green
-  'SLOT 5': '#FF9000', // Orange
-  'SLOT 6': '#D4A5A5', // Dusty rose
-  'SLOT 7': '#9B59B6'  // Purple
-} as const;
 
 export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
   const navigate = useNavigate();
@@ -184,50 +174,42 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
             </div>
 
             {/* Slots Section - Only show slots with events */}
-            <div className="space-y-3">
+            <div className="space-y-1">
               {Object.entries(slotEvents).map(([slot, events]) => {
                 const filteredEvents = events.filter(event => 
                   filters.allSchedules || (filters.mySchedules && event.createdBy === currentUser?.uid)
                 );
 
-                // Skip rendering if there are no events after filtering
                 if (filteredEvents.length === 0) return null;
 
                 return (
-                  <div key={slot} className="rounded-lg border border-gray-200">
-                    <div 
-                      className="p-2 flex items-center rounded-t-lg"
-                      style={{ 
-                        backgroundColor: SLOT_COLORS[slot as keyof typeof SLOT_COLORS],
-                        opacity: 0.9
-                      }}
-                    >
-                      <Calendar className="h-4 w-4 mr-3 text-white" />
-                      <span className="text-sm font-medium text-white">{slot}</span>
-                    </div>
-                    <div className="p-2 space-y-2 hover:bg-gray-50 transition-colors duration-200">
-                      {filteredEvents.map((event, index) => (
+                  <div key={slot} className="mb-4">
+                    {filteredEvents.map((event) => (
+                      <div 
+                        key={event.id}
+                        className="rounded-lg overflow-hidden mb-2 border border-gray-200"
+                        onClick={() => handleEventClick(event)}
+                      >
                         <div 
-                          key={index} 
-                          className="text-xs space-y-1 cursor-pointer p-2 rounded hover:bg-gray-100"
-                          onClick={() => handleEventClick(event)}
+                          className="p-3 cursor-pointer"
+                          style={{
+                            backgroundColor: DEPARTMENT_COLORS[eventCreators[event.createdBy]?.department as keyof typeof DEPARTMENT_COLORS] || '#808080',
+                            opacity: 0.9
+                          }}
                         >
-                          <div className="font-medium">{event.title}</div>
-                          <div className="text-gray-500">{formatDateRange(event.start, event.end)}</div>
-                          <div className="text-gray-400 truncate">
-                            {eventCreators[event.createdBy] ? (
-                              <>
-                                <span>{eventCreators[event.createdBy].name}</span>
-                                <span className="text-gray-400"> • </span>
-                                <span>{eventCreators[event.createdBy].department}</span>
-                              </>
-                            ) : (
-                              'Loading...'
-                            )}
+                          <div className="text-white">
+                            <div className="font-medium text-sm">{event.title}</div>
+                            <div className="text-xs opacity-90">{formatDateRange(event.start, event.end)}</div>
+                            <div className="text-xs mt-1 opacity-80">
+                              {eventCreators[event.createdBy]?.name || 'Loading...'}
+                              {eventCreators[event.createdBy] && (
+                                <> • {eventCreators[event.createdBy].department}</>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
                 );
               })}
@@ -235,12 +217,18 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
           </div>
 
           {/* Footer section - fixed at bottom */}
-          <div className="p-5 border-t bg-white">
+          <div className="p-5 border-t bg-white space-y-3">
             {/* User Profile */}
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg flex items-center space-x-3">
+            <div 
+              className="flex items-center p-2 rounded"
+              style={{ 
+                backgroundColor: DEPARTMENT_COLORS[userProfile?.department as keyof typeof DEPARTMENT_COLORS] || '#808080',
+                opacity: 0.9
+              }}
+            >
               <div>
-                <p className="text-sm font-medium text-gray-700">{userProfile?.name || 'User'}</p>
-                <p className="text-xs text-gray-500">{userProfile?.department}</p>
+                <p className="text-sm font-medium text-white">{userProfile?.name || 'User'}</p>
+                <p className="text-xs text-white/80">{userProfile?.department}</p>
               </div>
             </div>
 
@@ -263,7 +251,7 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
             ...selectedEvent,
             start: new Date(selectedEvent.start),
             end: new Date(selectedEvent.end),
-            slotNumber: selectedEvent.slotNumber as keyof typeof SLOT_COLORS,
+            slotNumber: selectedEvent.slotNumber as keyof typeof DEPARTMENT_COLORS,
           }}
           onEdit={() => {}}
           onDelete={() => {}}

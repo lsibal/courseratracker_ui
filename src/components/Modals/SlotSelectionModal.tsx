@@ -1,4 +1,5 @@
-import { SLOT_COLORS } from '../Calendar/constants';
+import { useAuth } from '../../context/AuthContext';
+import { DEPARTMENT_COLORS } from '../Calendar/constants';
 import BaseModal from './BaseModal';
 import moment from 'moment';
 
@@ -28,12 +29,17 @@ export default function SlotSelectionModal({
       </p>
       <div className="space-y-2">
         {slots.map(({ name, event }) => (
-          <button
+          <div 
             key={name}
+            className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
             onClick={() => onSlotSelect(name, event)}
-            className={`w-full p-3 flex items-center justify-between rounded-md border 
-              ${event ? 'bg-gray-50 border-gray-300' : 'bg-white hover:bg-gray-50 border-gray-200'}`}
           >
+            <div 
+              className="w-4 h-4 rounded-full"
+              style={{ 
+                backgroundColor: event ? DEPARTMENT_COLORS[event.department as keyof typeof DEPARTMENT_COLORS] : '#808080'
+              }}
+            />
             <div className="flex items-center space-x-2">
               <span className="text-gray-700">{name}</span>
               {event && (
@@ -42,11 +48,7 @@ export default function SlotSelectionModal({
                 </span>
               )}
             </div>
-            <div 
-              className="w-4 h-4 rounded-full"
-              style={{ backgroundColor: SLOT_COLORS[name as keyof typeof SLOT_COLORS] }}
-            />
-          </button>
+          </div>
         ))}
       </div>
     </BaseModal>

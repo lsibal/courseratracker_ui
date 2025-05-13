@@ -14,7 +14,7 @@ import { db } from '../../firebase/database';
 import SlotSelectionModal from '../Modals/SlotSelectionModal';
 import EventViewModal from '../Modals/EventViewModal';
 import EventFormModal from '../Modals/EventFormModal';
-import { SLOT_COLORS } from './constants';
+import { SLOT_COLORS, DEPARTMENT_COLORS } from './constants';
 
 const localizer = momentLocalizer(moment);
 
@@ -28,6 +28,7 @@ interface Event {
   resources: Resource[];
   attendees?: number;
   createdBy?: string;
+  department?: string;
 }
 
 interface Timeslot {
@@ -71,11 +72,23 @@ export default function CalendarView({
 
   const { currentUser } = useAuth();
 
-  const eventStyleGetter = (event: Event) => ({
+  const eventStyleGetter = (event: Event) => {
+  // Get the department directly from the event object
+  // This assumes the event object has a department property
+  return {
     style: {
-      backgroundColor: SLOT_COLORS[event.slotNumber]
+      backgroundColor: DEPARTMENT_COLORS[event.department as keyof typeof DEPARTMENT_COLORS] || '#808080',
+      borderRadius: '4px',
+      border: 'none',
+      color: '#fff',
+      padding: '4px 8px',
+      fontSize: '0.875rem',
+      fontWeight: 500,
+      opacity: 0.9,
+      boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
     }
-  });
+  };
+};
 
   const generateTimeSlots = (date: Date) => {
     const slots = [];
@@ -165,7 +178,8 @@ export default function CalendarView({
           end: endDateTime.toISOString()
         },
         resources: [{ id: 7 }],
-        createdBy: selectedEvent ? selectedEvent.createdBy : currentUser?.uid
+        createdBy: selectedEvent ? selectedEvent.createdBy : currentUser?.uid,
+        department: currentUser?.department || 'Others' // Ensure department is always set
       };
 
       const eventRef = ref(db, `events/${eventId}`);
@@ -235,9 +249,10 @@ export default function CalendarView({
             },
             resources: event.resources || [],
             attendees: event.attendees,
-            createdBy: event.createdBy || currentUser?.uid
+            createdBy: event.createdBy || currentUser?.uid,
+            department: event.department // Make sure this is included
           };
-  
+
           if (!isNaN(reconstructedEvent.start.getTime()) && !isNaN(reconstructedEvent.end.getTime())) {
             fetchedEvents.push(reconstructedEvent);
           }
@@ -378,7 +393,12 @@ export default function CalendarView({
           events={displayEvents}
           startAccessor="start"
           endAccessor="end"
-          style={{ height: '100%' }}
+          style={{ 
+            height: '100%',
+            backgroundColor: '#fff',
+            padding: '10px'
+          }}
+          className="rounded-lg shadow-sm"
           date={date}
           onNavigate={setDate}
           view={view as View}

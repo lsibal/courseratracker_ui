@@ -4,15 +4,22 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  type User
+  type User as FirebaseUser
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
+
+// Add these type definitions
+type Department = 'AppDev' | 'QA' | 'DMR' | 'NOC' | 'Others';
+
+interface User extends FirebaseUser {
+  department: Department;
+}
 
 interface AuthContextType {
   user: User | null;
   currentUser: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<any>; // Update return type
+  register: (email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
   loading: boolean;
 }
@@ -26,8 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setCurrentUser(user);
+      setUser(user as User);
+      setCurrentUser(user as User);
       setLoading(false);
     });
 

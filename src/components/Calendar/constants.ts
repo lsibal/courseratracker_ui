@@ -8,16 +8,24 @@ export const SLOT_COLORS = {
   'SLOT 7': '#9B59B6'
 } as const;
 
+export const DEPARTMENT_COLORS = {
+  'AppDev': '#FF6B6B', // Coral red
+  'QA': '#4ECDC4',     // Turquoise
+  'DMR': '#45B7D1',    // Sky blue
+  'NOC': '#96CEB4',    // Sage green
+  'Others': '#D4A5A5'  // Dusty rose
+} as const;
+
 export interface Event {
   id: string;
   title: string;
-  slotNumber: keyof typeof SLOT_COLORS;
+  department: keyof typeof DEPARTMENT_COLORS;
   start: Date;
   end: Date;
   timeslot: Timeslot;
   resources: Resource[];
   attendees?: number;
-  createdBy: string; // Remove optional
+  createdBy: string;
 }
 
 export interface Timeslot {
