@@ -15,6 +15,7 @@ import SlotSelectionModal from '../Modals/SlotSelectionModal';
 import EventViewModal from '../Modals/EventViewModal';
 import EventFormModal from '../Modals/EventFormModal';
 import { SLOT_COLORS, DEPARTMENT_COLORS } from './constants';
+import { sanitizeInput } from '../../utils/sanitize';
 
 const localizer = momentLocalizer(moment);
 
@@ -130,6 +131,8 @@ export default function CalendarView({
   const handleCreateEvent = async () => {
     if (!selectedDate || !selectedSlot || !startDate || !endDate || !selectedCourse) return;
 
+    const sanitizedCourse = sanitizeInput(selectedCourse);
+    
     const startDateTime = new Date(`${startDate}T00:00:00`);
     const endDateTime = new Date(`${endDate}T00:00:00`);
     
@@ -168,7 +171,7 @@ export default function CalendarView({
 
       const eventData = {
         id: eventId,
-        title: selectedCourse,
+        title: sanitizedCourse,
         slotNumber: selectedSlot as keyof typeof SLOT_COLORS,
         start: startDateTime,
         end: endDateTime,
@@ -205,7 +208,7 @@ export default function CalendarView({
 
     } catch (error: any) {
       console.error('Error saving event:', error);
-      alert(error.message || 'Failed to save event. Please try again.');
+      alert(sanitizeInput(error.message) || 'Failed to save event. Please try again.');
     }
   };
 

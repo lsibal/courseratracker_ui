@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getDatabase, ref as dbRef, set } from 'firebase/database';
+import { sanitizeInput } from '../../utils/sanitize';
 
 const DEPARTMENTS = {
   AppDev: 'Application Development',
@@ -68,12 +69,26 @@ export default function Register() {
     await set(userRef, profile);
   };
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!name.trim()) {
+    // Sanitize inputs
+    const sanitizedName = sanitizeInput(name);
+    const sanitizedEmail = sanitizeInput(email);
+    
+    if (!sanitizedName) {
       setError('Name is required');
+      return;
+    }
+
+    if (!validateEmail(sanitizedEmail)) {
+      setError('Please enter a valid email address');
       return;
     }
 
@@ -90,11 +105,17 @@ export default function Register() {
 
     try {
       setLoading(true);
-      const response = await register(email, password);
+      const response = await register(sanitizedEmail, password);
       
       if (!response || !response.user) {
         throw new Error('Registration failed - no user returned');
       }
+
+      const profile: UserProfile = {
+        name: sanitizedName,
+        email: sanitizedEmail,
+        department
+      };
 
       await saveUserProfile(response.user.uid);
       navigate('/dashboard');

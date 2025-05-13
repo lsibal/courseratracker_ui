@@ -183,7 +183,7 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
                 if (filteredEvents.length === 0) return null;
 
                 return (
-                  <div key={slot} className="mb-4">
+                  <div key={slot} className="mb-1">
                     {filteredEvents.map((event) => (
                       <div 
                         key={event.id}
