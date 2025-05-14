@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/server';
-import { ref, set, query, orderByChild, onValue } from 'firebase/database';
+import { ref, set, query, orderByChild, onValue, get, getDatabase } from 'firebase/database';
 import { db } from '../../firebase/database';
 import SlotSelectionModal from '../Modals/SlotSelectionModal';
 import EventViewModal from '../Modals/EventViewModal';
@@ -70,26 +70,47 @@ export default function CalendarView({
   const [selectedCourse, setSelectedCourse] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [eventCreators, setEventCreators] = useState<Record<string, {department: string}>>({});
 
   const { currentUser } = useAuth();
 
+  useEffect(() => {
+    const db = getDatabase();
+    const uniqueCreatorIds = [...new Set(events.map(event => event.createdBy))];
+
+    uniqueCreatorIds.forEach(async (creatorId) => {
+      if (creatorId && !eventCreators[creatorId]) {
+        const userRef = ref(db, `users/${creatorId}`);
+        const snapshot = await get(userRef);
+        if (snapshot.exists()) {
+          setEventCreators(prev => ({
+            ...prev,
+            [creatorId]: snapshot.val()
+          }));
+        }
+      }
+    });
+  }, [events]);
+
   const eventStyleGetter = (event: Event) => {
-  // Get the department directly from the event object
-  // This assumes the event object has a department property
-  return {
-    style: {
-      backgroundColor: DEPARTMENT_COLORS[event.department as keyof typeof DEPARTMENT_COLORS] || '#808080',
-      borderRadius: '4px',
-      border: 'none',
-      color: '#fff',
-      padding: '4px 8px',
-      fontSize: '0.875rem',
-      fontWeight: 500,
-      opacity: 0.9,
-      boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-    }
+    const creatorDepartment = event.createdBy ? 
+      eventCreators[event.createdBy]?.department : 
+      'Others';
+
+    return {
+      style: {
+        backgroundColor: DEPARTMENT_COLORS[creatorDepartment as keyof typeof DEPARTMENT_COLORS] || '#808080',
+        borderRadius: '4px',
+        border: 'none',
+        color: '#fff',
+        padding: '4px 8px',
+        fontSize: '0.875rem',
+        fontWeight: 500,
+        opacity: 0.9,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+      }
+    };
   };
-};
 
   const generateTimeSlots = (date: Date) => {
     const slots = [];
@@ -134,70 +155,69 @@ export default function CalendarView({
     const sanitizedCourse = sanitizeInput(selectedCourse);
     
     const startDateTime = new Date(`${startDate}T00:00:00`);
-    const endDateTime = new Date(`${endDate}T00:00:00`);
+    const endDateTime = new Date(`${endDate}T23:59:59`);
     
     if (endDateTime <= startDateTime) {
       alert('End date must be after start date');
       return;
     }
 
-    const eventId = selectedEvent ? selectedEvent.id : Date.now().toString();
+    const eventId = selectedEvent ? selectedEvent.id : `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     try {
-      const overlappingEvents = events.filter(event => {
-        if (event.slotNumber !== selectedSlot) return false;
-        if (selectedEvent && event.id === selectedEvent.id) return false;
-
-        const eventStart = new Date(event.start);
-        const eventEnd = new Date(event.end);
-
-        return (startDateTime <= eventEnd && endDateTime >= eventStart);
+      const snapshot = await get(ref(db, 'events'));
+      const existingEvents: Event[] = [];
+      
+      snapshot.forEach((childSnapshot) => {
+        const event = childSnapshot.val();
+        if (event.slotNumber === selectedSlot) {
+          existingEvents.push({
+            ...event,
+            start: new Date(event.start),
+            end: new Date(event.end)
+          });
+        }
       });
 
-      if (overlappingEvents.length > 0) {
-        const sortedOverlaps = overlappingEvents.sort((a, b) => 
-          new Date(a.start).getTime() - new Date(b.start).getTime()
-        );
+      const hasOverlap = existingEvents.some(event => {
+        if (selectedEvent && event.id === selectedEvent.id) return false;
+        
+        const eventStart = new Date(event.start);
+        const eventEnd = new Date(event.end);
+        
+        return !(endDateTime <= eventStart || startDateTime >= eventEnd);
+      });
 
-        const conflicts = sortedOverlaps.map(event => 
-          `${moment(event.start).format('MMM D')} to ${moment(event.end).format('MMM D, YYYY')}`
-        ).join(', ');
-
+      if (hasOverlap) {
         throw new Error(
-          `Slot ${selectedSlot} already has bookings during these dates: ${conflicts}. ` +
-          `Please choose different dates or a different slot.`
+          `Slot ${selectedSlot} is already booked during these dates. Please choose different dates or slot.`
         );
       }
 
       const eventData = {
         id: eventId,
         title: sanitizedCourse,
-        slotNumber: selectedSlot as keyof typeof SLOT_COLORS,
-        start: startDateTime,
-        end: endDateTime,
+        slotNumber: selectedSlot,
+        start: startDateTime.toISOString(),
+        end: endDateTime.toISOString(),
         timeslot: {
           id: parseInt(selectedSlot.split(' ')[1]),
           start: startDateTime.toISOString(),
           end: endDateTime.toISOString()
         },
         resources: [{ id: 7 }],
-        createdBy: selectedEvent ? selectedEvent.createdBy : currentUser?.uid,
-        department: currentUser?.department || 'Others' // Ensure department is always set
+        createdBy: currentUser?.uid,
+        department: currentUser?.department || 'Others',
+        lastUpdated: new Date().toISOString()
       };
 
       const eventRef = ref(db, `events/${eventId}`);
+      await set(eventRef, eventData);
 
-      await set(eventRef, {
-        ...eventData,
-        start: eventData.start.toISOString(),
-        end: eventData.end.toISOString()
+      setEvents(prevEvents => {
+        const filteredEvents = prevEvents.filter(e => e.id !== eventId);
+        return [...filteredEvents, {...eventData, start: startDateTime, end: endDateTime}];
       });
-
-      if (selectedEvent) {
-        setEvents(events.map(e => e.id === eventId ? eventData : e));
-      } else {
-        setEvents([...events, eventData]);
-      }
 
       setShowCreateModal(false);
       setSelectedEvent(null);
@@ -208,7 +228,7 @@ export default function CalendarView({
 
     } catch (error: any) {
       console.error('Error saving event:', error);
-      alert(sanitizeInput(error.message) || 'Failed to save event. Please try again.');
+      alert(error.message || 'Failed to save event. Please try again.');
     }
   };
 
@@ -240,20 +260,9 @@ export default function CalendarView({
         snapshot.forEach((childSnapshot) => {
           const event = childSnapshot.val();
           const reconstructedEvent: Event = {
-            id: event.id,
-            title: event.title,
-            slotNumber: event.slotNumber,
+            ...event,
             start: new Date(event.start),
-            end: new Date(event.end),
-            timeslot: {
-              id: event.timeslot.id,
-              start: event.timeslot.start,
-              end: event.timeslot.end
-            },
-            resources: event.resources || [],
-            attendees: event.attendees,
-            createdBy: event.createdBy || currentUser?.uid,
-            department: event.department // Make sure this is included
+            end: new Date(event.end)
           };
 
           if (!isNaN(reconstructedEvent.start.getTime()) && !isNaN(reconstructedEvent.end.getTime())) {
@@ -261,8 +270,7 @@ export default function CalendarView({
           }
         });
         
-        fetchedEvents.sort((a, b) => a.start.getTime() - b.start.getTime());
-        setEvents(fetchedEvents);
+        setEvents(fetchedEvents.sort((a, b) => a.start.getTime() - b.start.getTime()));
       });
     } catch (error) {
       console.error('Failed to fetch events:', error);
@@ -285,11 +293,40 @@ export default function CalendarView({
   };
 
   useEffect(() => {
-    const unsubscribe = fetchEvents();
-    fetchCourses();
-    return () => {
-      if (unsubscribe) unsubscribe();
+    let mounted = true;
+    
+    const initializeEvents = async () => {
+      try {
+        const snapshot = await get(ref(db, 'events'));
+        if (!mounted) return;
+
+        const initialEvents: Event[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const event = childSnapshot.val();
+          const reconstructedEvent: Event = {
+            ...event,
+            start: new Date(event.start),
+            end: new Date(event.end)
+          };
+          if (!isNaN(reconstructedEvent.start.getTime()) && !isNaN(reconstructedEvent.end.getTime())) {
+            initialEvents.push(reconstructedEvent);
+          }
+        });
+        
+        setEvents(initialEvents.sort((a, b) => a.start.getTime() - b.start.getTime()));
+        
+        const unsubscribe = fetchEvents();
+        return () => {
+          mounted = false;
+          if (unsubscribe) unsubscribe();
+        };
+      } catch (error) {
+        console.error('Failed to initialize events:', error);
+      }
     };
+
+    initializeEvents();
+    fetchCourses();
   }, []);
 
   const handleNavigate = (action: 'PREV' | 'NEXT' | 'TODAY') => {

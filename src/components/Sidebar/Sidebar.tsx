@@ -217,7 +217,7 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
           </div>
 
           {/* Footer section - fixed at bottom */}
-          <div className="p-5 border-t bg-white space-y-3">
+          <div className="p-5 border-t border-[#0000005c] bg-white space-y-3">
             {/* User Profile */}
             <div 
               className="flex items-center p-2 rounded"
