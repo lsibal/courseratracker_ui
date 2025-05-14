@@ -28,8 +28,8 @@ interface Event {
   timeslot: Timeslot;
   resources: Resource[];
   attendees?: number;
-  createdBy?: string;
-  department?: string;
+  createdBy: string;  // Remove optional
+  department: string; // Remove optional
 }
 
 interface Timeslot {
@@ -165,9 +165,11 @@ export default function CalendarView({
     const eventId = selectedEvent ? selectedEvent.id : `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     try {
+      // Get fresh data from Firebase
       const snapshot = await get(ref(db, 'events'));
       const existingEvents: Event[] = [];
       
+      // Properly reconstruct events with dates
       snapshot.forEach((childSnapshot) => {
         const event = childSnapshot.val();
         if (event.slotNumber === selectedSlot) {
@@ -179,13 +181,21 @@ export default function CalendarView({
         }
       });
 
+      // More strict overlap checking
       const hasOverlap = existingEvents.some(event => {
         if (selectedEvent && event.id === selectedEvent.id) return false;
         
         const eventStart = new Date(event.start);
         const eventEnd = new Date(event.end);
         
-        return !(endDateTime <= eventStart || startDateTime >= eventEnd);
+        // Check if dates overlap
+        const overlap = (
+          (startDateTime >= eventStart && startDateTime <= eventEnd) ||
+          (endDateTime >= eventStart && endDateTime <= eventEnd) ||
+          (startDateTime <= eventStart && endDateTime >= eventEnd)
+        );
+
+        return overlap;
       });
 
       if (hasOverlap) {
@@ -206,19 +216,22 @@ export default function CalendarView({
           end: endDateTime.toISOString()
         },
         resources: [{ id: 7 }],
-        createdBy: currentUser?.uid,
+        createdBy: currentUser?.uid || '',
         department: currentUser?.department || 'Others',
         lastUpdated: new Date().toISOString()
       };
 
+      // Write to Firebase first
       const eventRef = ref(db, `events/${eventId}`);
       await set(eventRef, eventData);
 
+      // Update local state only after successful write
       setEvents(prevEvents => {
         const filteredEvents = prevEvents.filter(e => e.id !== eventId);
         return [...filteredEvents, {...eventData, start: startDateTime, end: endDateTime}];
       });
 
+      // Reset form
       setShowCreateModal(false);
       setSelectedEvent(null);
       setSelectedCourse('');
