@@ -158,9 +158,7 @@ export default function CalendarView({
       const startDateTime = new Date(`${startDate}T00:00:00`);
       const endDateTime = new Date(`${endDate}T23:59:59`);
 
-      // Validation checks remain the same
-      // ... existing validation code ...
-
+      // Cause of error (NaN)
       const eventId = selectedEvent ? selectedEvent.id : `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       const eventData = {

@@ -16,26 +16,38 @@ export class CalendarService {
   // Create schedule in both Firebase and Hourglass
   async createSchedule(eventData: any) {
     try {
-      // 1. Create in Firebase
+      // Validate resource ID before saving
+      const resourceId = parseInt(eventData.resources[0].id);
+      console.log(eventData);
+      console.log(resourceId);
+      if (isNaN(resourceId)) {
+        throw new Error('Invalid resource ID');
+      }
+
+      // 1. Create in Firebase with validated data
+      const firebaseData = {
+        ...eventData,
+        resources: [{
+          id: resourceId // Use the validated number
+        }]
+      };
+      
       const firebaseEventRef = ref(db, `events/${eventData.id}`);
-      await set(firebaseEventRef, eventData);
+      await set(firebaseEventRef, firebaseData);
 
       // 2. Create in Hourglass
       const hourglassData: HourglassSchedule = {
-        resources: [
-          {
-            id: parseInt(eventData.resources[0].id)
-          }
-        ],
+        resources: [{ id: resourceId }],
         timeslot: {
           start: eventData.start,
           end: eventData.end
         }
       };
+
       const hourglassResponse = await api.post('/api/schedules', hourglassData);
 
       return {
-        firebase: eventData,
+        firebase: firebaseData,
         hourglass: hourglassResponse.data
       };
     } catch (error) {
