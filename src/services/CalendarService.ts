@@ -13,37 +13,39 @@ interface HourglassSchedule {
 }
 
 export class CalendarService {
-  // Create schedule in both Firebase and Hourglass
   async createSchedule(eventData: any) {
     try {
-      // Validate resource ID before saving
-      const resourceId = parseInt(eventData.resources[0].id);
-      console.log(eventData);
-      console.log(resourceId);
-      if (isNaN(resourceId)) {
-        throw new Error('Invalid resource ID');
+      console.log('Creating schedule with data:', eventData); // Debug log
+
+      // Get the resource ID directly from the resources array
+      const resourceId = eventData.resources[0]?.id;
+      console.log('Resource ID extracted:', resourceId); // Debug log
+
+      if (!resourceId || isNaN(resourceId)) {
+        throw new Error('Invalid resource ID. Please select a valid course.');
       }
 
-      // 1. Create in Firebase with validated data
+      // Create in Firebase
       const firebaseData = {
         ...eventData,
-        resources: [{
-          id: resourceId // Use the validated number
-        }]
+        status: 'CREATED'
       };
-      
+
       const firebaseEventRef = ref(db, `events/${eventData.id}`);
       await set(firebaseEventRef, firebaseData);
 
-      // 2. Create in Hourglass
-      const hourglassData: HourglassSchedule = {
-        resources: [{ id: resourceId }],
+      // Create in Hourglass with exact format
+      const hourglassData = {
+        resources: [{ 
+          id: resourceId // Using the numeric ID
+        }],
         timeslot: {
           start: eventData.start,
           end: eventData.end
         }
       };
 
+      console.log('Sending to Hourglass:', hourglassData); // Debug log
       const hourglassResponse = await api.post('/api/schedules', hourglassData);
 
       return {
@@ -51,24 +53,30 @@ export class CalendarService {
         hourglass: hourglassResponse.data
       };
     } catch (error) {
-      console.error('Error creating schedule:', error);
+      console.error('Error in createSchedule:', error);
       throw error;
     }
   }
 
-  // Update schedule status in both systems
   async updateScheduleStatus(scheduleId: string, status: string) {
     try {
-      // 1. Update in Firebase
+      console.log('Updating schedule status:', { scheduleId, status });
+
+      // 1. Update Firebase
       const firebaseRef = ref(db, `events/${scheduleId}`);
       await set(firebaseRef, { status });
 
-      // 2. Update in Hourglass (only if status is CANCELLED)
+      // 2. Update Hourglass - Use the numeric schedule ID
       if (status === 'CANCELLED') {
-        await api.put(`/api/schedules/${scheduleId}/status`, {
-          id: scheduleId,
+        // Remove any 'event_' prefix if present and convert to number
+        const cleanId = scheduleId.replace('event_', '');
+        const hourglassData = {
+          id: parseInt(cleanId),
           status: "CANCELLED"
-        });
+        };
+
+        console.log('Sending cancellation to Hourglass:', hourglassData);
+        await api.put(`/api/schedules/${cleanId}/status`, hourglassData);
       }
 
       return true;

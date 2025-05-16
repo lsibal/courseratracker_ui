@@ -69,6 +69,7 @@ export default function CalendarView({
   const [showSlotModal, setShowSlotModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<string>('');
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [eventCreators, setEventCreators] = useState<Record<string, {department: string}>>({});
@@ -150,6 +151,12 @@ export default function CalendarView({
     setShowSlotModal(true);
   };
 
+  const handleCourseChange = (courseName: string, courseId: number) => {
+    console.log('Course selected:', courseName, 'ID:', courseId); // Debug log
+    setSelectedCourse(courseName);
+    setSelectedCourseId(courseId);
+  };
+
   const handleCreateEvent = async () => {
     if (!selectedDate || !selectedSlot || !startDate || !endDate || !selectedCourse) return;
 
@@ -158,21 +165,24 @@ export default function CalendarView({
       const startDateTime = new Date(`${startDate}T00:00:00`);
       const endDateTime = new Date(`${endDate}T23:59:59`);
 
-      // Cause of error (NaN)
       const eventId = selectedEvent ? selectedEvent.id : `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       const eventData = {
         id: eventId,
         title: sanitizedCourse,
+        courseId: selectedCourseId, // Add this explicitly
+        selectedCourse: selectedCourse,
         slotNumber: selectedSlot,
         start: startDateTime.toISOString(),
         end: endDateTime.toISOString(),
+        resources: [{
+          id: selectedCourseId, // Make sure we're using the numeric ID
+          name: selectedCourse
+        }],
         timeslot: {
-          id: parseInt(selectedSlot.split(' ')[1]),
           start: startDateTime.toISOString(),
           end: endDateTime.toISOString()
         },
-        resources: [{ id: parseInt(selectedCourse) }], // Use the course ID from Hourglass
         createdBy: currentUser?.uid || '',
         department: currentUser?.department || 'Others',
         lastUpdated: new Date().toISOString()
@@ -436,7 +446,7 @@ export default function CalendarView({
         selectedCourse={selectedCourse}
         startDate={startDate}
         endDate={endDate}
-        onCourseChange={setSelectedCourse}
+        onCourseChange={handleCourseChange}
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}
         onSave={handleCreateEvent}

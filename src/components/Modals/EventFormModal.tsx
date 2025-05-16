@@ -12,7 +12,7 @@ interface EventFormModalProps {
   selectedCourse: string;
   startDate: string;
   endDate: string;
-  onCourseChange: (course: string) => void;
+  onCourseChange: (courseName: string, courseId: number) => void;
   onStartDateChange: (date: string) => void;
   onEndDateChange: (date: string) => void;
   onSave: () => void;
@@ -32,6 +32,15 @@ export default function EventFormModal({
   onSave,
   isEditing = false
 }: EventFormModalProps) {
+  const handleCourseSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedValue = e.target.value;
+    const course = courses.find(c => c.name === selectedValue);
+    if (course) {
+      console.log('Selected course:', course.name, 'ID:', course.id); // Debug log
+      onCourseChange(course.name, course.id);
+    }
+  };
+
   return (
     <BaseModal 
       isOpen={isOpen} 
@@ -47,7 +56,7 @@ export default function EventFormModal({
             id="course-name"
             className="w-full px-3 py-2 border border-gray-300 rounded-md"
             value={selectedCourse}
-            onChange={(e) => onCourseChange(e.target.value)}
+            onChange={handleCourseSelect}
           >
             <option value="" disabled>Select a course</option>
             {courses.map((course) => (
