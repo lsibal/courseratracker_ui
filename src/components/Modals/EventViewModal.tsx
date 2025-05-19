@@ -1,4 +1,4 @@
-import { CalendarIcon, Edit, Trash2, User } from 'lucide-react';
+import { CalendarIcon, Edit, Trash2, User, Link as LinkIcon } from 'lucide-react';
 import BaseModal from './BaseModal';
 import moment from 'moment';
 import { SLOT_COLORS, Event } from '../Calendar/constants';
@@ -108,6 +108,23 @@ export default function EventViewModal({
             )}
           </div>
         </div>
+
+        {event?.courseraLink && (
+          <div className="flex items-center text-gray-600 pt-2 border-t">
+            <LinkIcon size={18} className="mr-2" />
+            <div className="space-y-1">
+              <div className="font-medium">Coursera Link:</div>
+              <a 
+                href={event.courseraLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 hover:text-blue-600 break-all"
+              >
+                {event.courseraLink}
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     </BaseModal>
   );

@@ -1,5 +1,7 @@
 import BaseModal from './BaseModal';
 import moment from 'moment';
+import { validateCourseraUrl } from '../../utils/validation';
+import { useState } from 'react';
 
 interface Course {
   id: number;
@@ -27,6 +29,8 @@ interface EventFormModalProps {
   isEditing?: boolean;
   selectedSlot: string;
   existingEvents: Event[];
+  courseraLink?: string;
+  onCourseraLinkChange: (link: string) => void;
 }
 
 export default function EventFormModal({
@@ -42,8 +46,11 @@ export default function EventFormModal({
   onSave,
   isEditing = false,
   selectedSlot,
-  existingEvents
+  existingEvents,
+  courseraLink = '',
+  onCourseraLinkChange
 }: EventFormModalProps) {
+  const [courseraError, setCourseraError] = useState<string>('');
 
   const handleCourseSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedValue = e.target.value;
@@ -94,12 +101,27 @@ export default function EventFormModal({
     return null;
   };
 
+  const handleCourseraLinkChange = (value: string) => {
+    if (value && !validateCourseraUrl(value)) {
+      setCourseraError('Please enter a valid Coursera URL (coursera.org)');
+    } else {
+      setCourseraError('');
+    }
+    onCourseraLinkChange(value);
+  };
+
   const handleSave = () => {
-    const error = validateDates(startDate, endDate);
-    if (error) {
-      alert(error);
+    const dateError = validateDates(startDate, endDate);
+    if (dateError) {
+      alert(dateError);
       return;
     }
+
+    if (courseraLink && !validateCourseraUrl(courseraLink)) {
+      alert('Please enter a valid Coursera URL');
+      return;
+    }
+
     onSave();
   };
 
@@ -150,6 +172,26 @@ export default function EventFormModal({
             min={startDate || moment().add(1, 'days').format('YYYY-MM-DD')}
             onChange={(e) => onEndDateChange(e.target.value)}
           />
+        </div>
+
+        {/* Update Coursera Link field */}
+        <div>
+          <label htmlFor="coursera-link" className="block text-sm font-medium text-gray-700 mb-1">
+            Coursera Link (Optional)
+          </label>
+          <input
+            type="url"
+            id="coursera-link"
+            value={courseraLink}
+            onChange={(e) => handleCourseraLinkChange(e.target.value)}
+            className={`w-full px-3 py-2 border rounded-md ${
+              courseraError ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="https://www.coursera.org/..."
+          />
+          {courseraError && (
+            <p className="mt-1 text-sm text-red-500">{courseraError}</p>
+          )}
         </div>
 
         <div className="flex justify-end">

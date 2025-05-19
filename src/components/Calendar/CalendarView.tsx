@@ -29,8 +29,9 @@ interface Event {
   timeslot: Timeslot;
   resources: Resource[];
   attendees?: number;
-  createdBy: string;  // Remove optional
-  department: string; // Remove optional
+  createdBy: string;
+  department: string;
+  courseraLink?: string; // Add this new field
 }
 
 interface Timeslot {
@@ -73,6 +74,7 @@ export default function CalendarView({
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [eventCreators, setEventCreators] = useState<Record<string, {department: string}>>({});
+  const [courseraLink, setCourseraLink] = useState('');
 
   const { currentUser } = useAuth();
 
@@ -164,6 +166,7 @@ export default function CalendarView({
       const sanitizedCourse = sanitizeInput(selectedCourse);
       const startDateTime = new Date(`${startDate}T00:00:00`);
       const endDateTime = new Date(`${endDate}T23:59:59`);
+      const sanitizedCourseraLink = courseraLink ? sanitizeInput(courseraLink) : '';
 
       const eventId = selectedEvent ? selectedEvent.id : `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -185,6 +188,7 @@ export default function CalendarView({
         },
         createdBy: currentUser?.uid || '',
         department: currentUser?.department || 'Others',
+        courseraLink: sanitizedCourseraLink,
         lastUpdated: new Date().toISOString()
       };
 
@@ -197,6 +201,7 @@ export default function CalendarView({
       setStartDate('');
       setEndDate('');
       setSelectedSlot('');
+      setCourseraLink('');
 
     } catch (error: any) {
       console.error('Error saving event:', error);
@@ -211,6 +216,8 @@ export default function CalendarView({
 
     try {
       await CalendarService.updateScheduleStatus(eventId, 'CANCELLED');
+      // The event will be removed from Firebase automatically
+      // Just update the UI by filtering out the cancelled event
       setEvents(events.filter(e => e.id !== eventId));
       setShowViewModal(false);
       setSelectedEvent(null);
@@ -453,6 +460,8 @@ export default function CalendarView({
         isEditing={!!selectedEvent}
         selectedSlot={selectedSlot}
         existingEvents={events}
+        courseraLink={courseraLink}
+        onCourseraLinkChange={setCourseraLink}
       />
 
       <EventViewModal
