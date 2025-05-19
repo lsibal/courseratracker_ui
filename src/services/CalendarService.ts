@@ -1,5 +1,5 @@
 import { db } from '../firebase/database';
-import { ref, set } from 'firebase/database';
+import { ref, set, get } from 'firebase/database';
 import api from '../utils/server';
 
 interface HourglassSchedule {
@@ -47,10 +47,19 @@ export class CalendarService {
 
       console.log('Sending to Hourglass:', hourglassData); // Debug log
       const hourglassResponse = await api.post('/api/schedules', hourglassData);
+      
+      // Update Firebase with Hourglass schedule ID
+      const hourglassSchedule = hourglassResponse.data;
+      const firebaseDataWithId = {
+        ...firebaseData,
+        hourglassId: hourglassSchedule.id // Store Hourglass ID
+      };
+
+      await set(firebaseEventRef, firebaseDataWithId);
 
       return {
-        firebase: firebaseData,
-        hourglass: hourglassResponse.data
+        firebase: firebaseDataWithId,
+        hourglass: hourglassSchedule
       };
     } catch (error) {
       console.error('Error in createSchedule:', error);
@@ -62,21 +71,26 @@ export class CalendarService {
     try {
       console.log('Updating schedule status:', { scheduleId, status });
 
-      // 1. Update Firebase
-      const firebaseRef = ref(db, `events/${scheduleId}`);
-      await set(firebaseRef, { status });
+      // Get the hourglass ID from Firebase first
+      const eventRef = ref(db, `events/${scheduleId}`);
+      const eventSnapshot = await get(eventRef);
+      const eventData = eventSnapshot.val();
+      
+      if (!eventData?.hourglassId) {
+        throw new Error('No Hourglass ID found for this schedule');
+      }
 
-      // 2. Update Hourglass - Use the numeric schedule ID
+      // Update Firebase
+      await set(eventRef, { ...eventData, status });
+
+      // Update Hourglass using the stored ID
       if (status === 'CANCELLED') {
-        // Remove any 'event_' prefix if present and convert to number
-        const cleanId = scheduleId.replace('event_', '');
         const hourglassData = {
-          id: parseInt(cleanId),
+          id: eventData.hourglassId,
           status: "CANCELLED"
         };
 
-        console.log('Sending cancellation to Hourglass:', hourglassData);
-        await api.put(`/api/schedules/${cleanId}/status`, hourglassData);
+        await api.put(`/api/schedules/${eventData.hourglassId}/status`, hourglassData);
       }
 
       return true;

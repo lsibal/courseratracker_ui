@@ -451,6 +451,8 @@ export default function CalendarView({
         onEndDateChange={setEndDate}
         onSave={handleCreateEvent}
         isEditing={!!selectedEvent}
+        selectedSlot={selectedSlot}
+        existingEvents={events}
       />
 
       <EventViewModal
