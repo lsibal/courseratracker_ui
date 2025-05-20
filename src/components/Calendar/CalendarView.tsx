@@ -31,7 +31,7 @@ interface Event {
   attendees?: number;
   createdBy: string;
   department: string;
-  courseraLink?: string; // Add this new field
+  courseraLink?: string;
 }
 
 interface Timeslot {
@@ -137,14 +137,23 @@ export default function CalendarView({
   };
 
   const handleSlotSelect = (slot: string, event: Event | null) => {
+    // If slot is occupied, just show the view modal
     if (event) {
       setSelectedEvent(event);
       setShowViewModal(true);
       setShowSlotModal(false);
     } else {
+      // If slot is free, prepare for creating a new event
+      setSelectedEvent(null); // Clear any existing selected event
       setSelectedSlot(slot);
       setShowSlotModal(false);
       setShowCreateModal(true);
+      
+      // Reset form fields for new event
+      setSelectedCourse('');
+      setStartDate(moment(selectedDate).format('YYYY-MM-DD'));
+      setEndDate(moment(selectedDate).format('YYYY-MM-DD'));
+      setCourseraLink('');
     }
   };
 
@@ -168,18 +177,19 @@ export default function CalendarView({
       const endDateTime = new Date(`${endDate}T23:59:59`);
       const sanitizedCourseraLink = courseraLink ? sanitizeInput(courseraLink) : '';
 
+      // FIX: Generate a unique ID for new events, use existing ID for edits
       const eventId = selectedEvent ? selectedEvent.id : `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       const eventData = {
         id: eventId,
         title: sanitizedCourse,
-        courseId: selectedCourseId, // Add this explicitly
+        courseId: selectedCourseId,
         selectedCourse: selectedCourse,
         slotNumber: selectedSlot,
         start: startDateTime.toISOString(),
         end: endDateTime.toISOString(),
         resources: [{
-          id: selectedCourseId, // Make sure we're using the numeric ID
+          id: selectedCourseId,
           name: selectedCourse
         }],
         timeslot: {
@@ -462,6 +472,7 @@ export default function CalendarView({
         existingEvents={events}
         courseraLink={courseraLink}
         onCourseraLinkChange={setCourseraLink}
+        selectedEvent={selectedEvent} // Pass the selectedEvent to the modal
       />
 
       <EventViewModal
@@ -476,6 +487,7 @@ export default function CalendarView({
             setStartDate(moment(selectedEvent.start).format('YYYY-MM-DD'));
             setEndDate(moment(selectedEvent.end).format('YYYY-MM-DD'));
             setSelectedSlot(selectedEvent.slotNumber);
+            setCourseraLink(selectedEvent.courseraLink || '');
           }
         }}
         onDelete={handleDeleteEvent}

@@ -31,6 +31,7 @@ interface EventFormModalProps {
   existingEvents: Event[];
   courseraLink?: string;
   onCourseraLinkChange: (link: string) => void;
+  selectedEvent?: Event | null;
 }
 
 export default function EventFormModal({
@@ -48,7 +49,8 @@ export default function EventFormModal({
   selectedSlot,
   existingEvents,
   courseraLink = '',
-  onCourseraLinkChange
+  onCourseraLinkChange,
+  selectedEvent
 }: EventFormModalProps) {
   const [courseraError, setCourseraError] = useState<string>('');
 
@@ -74,16 +76,19 @@ export default function EventFormModal({
       return "End date must be after start date";
     }
 
-    // Check for slot overlaps
+    // Check for slot overlaps - FIX: Proper event ID comparison and slot validation
     const hasOverlap = existingEvents.some(event => {
       // Skip checking the current event being edited
-      if (isEditing && event.id === selectedCourse) return false;
+      if (isEditing && selectedEvent && event.id === selectedEvent.id) {
+        return false;
+      }
 
-      const eventStart = moment(event.start);
-      const eventEnd = moment(event.end);
-
-      // Check if same slot and dates overlap
+      // Only check events in the same slot
       if (event.slotNumber === selectedSlot) {
+        // Check if there's date overlap
+        const eventStart = moment(event.start);
+        const eventEnd = moment(event.end);
+        
         return (
           (startDate.isBetween(eventStart, eventEnd, 'day', '[]')) ||
           (endDate.isBetween(eventStart, eventEnd, 'day', '[]')) ||
@@ -132,7 +137,14 @@ export default function EventFormModal({
       title={`${isEditing ? 'Edit' : 'Enter'} course details`}
     >
       <div className="space-y-4">
-        {/* Existing course select */}
+        {/* Debug info to help troubleshoot */}
+        {isEditing && selectedEvent && (
+          <div className="bg-blue-50 p-2 rounded text-xs text-blue-800 mb-2">
+            Editing event: {selectedEvent.id} | Slot: {selectedSlot}
+          </div>
+        )}
+
+        {/* Course select */}
         <div>
           <label htmlFor="course-name" className="block text-sm font-medium text-gray-700 mb-1">
             Course Name
@@ -150,6 +162,14 @@ export default function EventFormModal({
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Slot display (read-only) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Selected Slot</label>
+          <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+            {selectedSlot}
+          </div>
         </div>
 
         {/* Date inputs with min date validation */}
@@ -174,7 +194,7 @@ export default function EventFormModal({
           />
         </div>
 
-        {/* Update Coursera Link field */}
+        {/* Coursera Link field */}
         <div>
           <label htmlFor="coursera-link" className="block text-sm font-medium text-gray-700 mb-1">
             Coursera Link (Optional)
