@@ -1,4 +1,4 @@
-import { CalendarIcon, Edit, Trash2, User, Link as LinkIcon } from 'lucide-react';
+import { CalendarIcon, Edit, Trash2, User, Link as LinkIcon, StickyNote } from 'lucide-react';
 import BaseModal from './BaseModal';
 import moment from 'moment';
 import { SLOT_COLORS, Event } from '../Calendar/constants';
@@ -122,6 +122,16 @@ export default function EventViewModal({
               >
                 {event.courseraLink}
               </a>
+            </div>
+          </div>
+        )}
+
+        {event?.notes && (
+          <div className="flex items-start text-gray-600 pt-2 border-t">
+            <StickyNote size={18} className="mr-2 mt-1" />
+            <div className="space-y-1">
+              <div className="font-medium">Notes:</div>
+              <div className="text-sm whitespace-pre-wrap">{event.notes}</div>
             </div>
           </div>
         )}

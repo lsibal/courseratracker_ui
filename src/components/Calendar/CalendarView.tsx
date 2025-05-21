@@ -75,6 +75,7 @@ export default function CalendarView({
   const [endDate, setEndDate] = useState<string>('');
   const [eventCreators, setEventCreators] = useState<Record<string, {department: string}>>({});
   const [courseraLink, setCourseraLink] = useState('');
+  const [notes, setNotes] = useState('');
 
   const { currentUser } = useAuth();
 
@@ -154,6 +155,7 @@ export default function CalendarView({
       setStartDate(moment(selectedDate).format('YYYY-MM-DD'));
       setEndDate(moment(selectedDate).format('YYYY-MM-DD'));
       setCourseraLink('');
+      setNotes('');
     }
   };
 
@@ -176,6 +178,7 @@ export default function CalendarView({
       const startDateTime = new Date(`${startDate}T00:00:00`);
       const endDateTime = new Date(`${endDate}T23:59:59`);
       const sanitizedCourseraLink = courseraLink ? sanitizeInput(courseraLink) : '';
+      const sanitizedNotes = notes ? sanitizeInput(notes) : '';
 
       // FIX: Generate a unique ID for new events, use existing ID for edits
       const eventId = selectedEvent ? selectedEvent.id : `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -199,6 +202,7 @@ export default function CalendarView({
         createdBy: currentUser?.uid || '',
         department: currentUser?.department || 'Others',
         courseraLink: sanitizedCourseraLink,
+        notes: sanitizedNotes,
         lastUpdated: new Date().toISOString()
       };
 
@@ -212,10 +216,24 @@ export default function CalendarView({
       setEndDate('');
       setSelectedSlot('');
       setCourseraLink('');
-
+      setNotes('');
     } catch (error: any) {
       console.error('Error saving event:', error);
       alert(error.message || 'Failed to save event. Please try again.');
+    }
+  };
+
+  // Add notes to the form data when editing
+  const handleEdit = () => {
+    setShowViewModal(false);
+    setShowCreateModal(true);
+    if (selectedEvent) {
+      setSelectedCourse(selectedEvent.title);
+      setStartDate(moment(selectedEvent.start).format('YYYY-MM-DD'));
+      setEndDate(moment(selectedEvent.end).format('YYYY-MM-DD'));
+      setSelectedSlot(selectedEvent.slotNumber);
+      setCourseraLink(selectedEvent.courseraLink || '');
+      setNotes(selectedEvent.notes || '');
     }
   };
 
@@ -472,6 +490,8 @@ export default function CalendarView({
         existingEvents={events}
         courseraLink={courseraLink}
         onCourseraLinkChange={setCourseraLink}
+        notes={notes}
+        onNotesChange={setNotes}
         selectedEvent={selectedEvent} // Pass the selectedEvent to the modal
       />
 
@@ -479,17 +499,7 @@ export default function CalendarView({
         isOpen={showViewModal}
         onClose={() => setShowViewModal(false)}
         event={selectedEvent}
-        onEdit={() => {
-          setShowViewModal(false);
-          setShowCreateModal(true);
-          if (selectedEvent) {
-            setSelectedCourse(selectedEvent.title);
-            setStartDate(moment(selectedEvent.start).format('YYYY-MM-DD'));
-            setEndDate(moment(selectedEvent.end).format('YYYY-MM-DD'));
-            setSelectedSlot(selectedEvent.slotNumber);
-            setCourseraLink(selectedEvent.courseraLink || '');
-          }
-        }}
+        onEdit={handleEdit}
         onDelete={handleDeleteEvent}
         canEdit={currentUser?.uid === selectedEvent?.createdBy}
       />

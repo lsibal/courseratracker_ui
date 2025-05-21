@@ -32,6 +32,8 @@ interface EventFormModalProps {
   courseraLink?: string;
   onCourseraLinkChange: (link: string) => void;
   selectedEvent?: Event | null;
+  notes?: string;
+  onNotesChange: (notes: string) => void;
 }
 
 export default function EventFormModal({
@@ -50,7 +52,9 @@ export default function EventFormModal({
   existingEvents,
   courseraLink = '',
   onCourseraLinkChange,
-  selectedEvent
+  selectedEvent,
+  notes = '',
+  onNotesChange,
 }: EventFormModalProps) {
   const [courseraError, setCourseraError] = useState<string>('');
 
@@ -212,6 +216,20 @@ export default function EventFormModal({
           {courseraError && (
             <p className="mt-1 text-sm text-red-500">{courseraError}</p>
           )}
+        </div>
+
+        {/* Notes field */}
+        <div>
+          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+            Notes (Optional)
+          </label>
+          <textarea
+            id="notes"
+            value={notes}
+            onChange={(e) => onNotesChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md min-h-[100px] resize-y"
+            placeholder="Add any additional notes here..."
+          />
         </div>
 
         <div className="flex justify-end">
