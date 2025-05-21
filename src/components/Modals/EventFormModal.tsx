@@ -126,7 +126,12 @@ export default function EventFormModal({
       return;
     }
 
-    if (courseraLink && !validateCourseraUrl(courseraLink)) {
+    if (!courseraLink) {
+      alert('Please enter a Coursera URL');
+      return;
+    }
+
+    if (!validateCourseraUrl(courseraLink)) {
       alert('Please enter a valid Coursera URL');
       return;
     }
@@ -201,13 +206,14 @@ export default function EventFormModal({
         {/* Coursera Link field */}
         <div>
           <label htmlFor="coursera-link" className="block text-sm font-medium text-gray-700 mb-1">
-            Coursera Link (Optional)
+            Coursera Link <span className="text-red-500">*</span>
           </label>
           <input
             type="url"
             id="coursera-link"
             value={courseraLink}
             onChange={(e) => handleCourseraLinkChange(e.target.value)}
+            required
             className={`w-full px-3 py-2 border rounded-md ${
               courseraError ? 'border-red-500' : 'border-gray-300'
             }`}
@@ -242,7 +248,7 @@ export default function EventFormModal({
           <button 
             onClick={handleSave}
             className="bg-blue-500 text-white px-4 py-2 rounded-md"
-            disabled={!selectedCourse || !startDate || !endDate}
+            disabled={!selectedCourse || !startDate || !endDate || !courseraLink}
           >
             Save
           </button>

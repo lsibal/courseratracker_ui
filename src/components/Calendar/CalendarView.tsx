@@ -171,13 +171,13 @@ export default function CalendarView({
   };
 
   const handleCreateEvent = async () => {
-    if (!selectedDate || !selectedSlot || !startDate || !endDate || !selectedCourse) return;
+    if (!selectedDate || !selectedSlot || !startDate || !endDate || !selectedCourse || !courseraLink) return;
 
     try {
       const sanitizedCourse = sanitizeInput(selectedCourse);
       const startDateTime = new Date(`${startDate}T00:00:00`);
       const endDateTime = new Date(`${endDate}T23:59:59`);
-      const sanitizedCourseraLink = courseraLink ? sanitizeInput(courseraLink) : '';
+      const sanitizedCourseraLink = sanitizeInput(courseraLink); // Remove the conditional since it's required now
       const sanitizedNotes = notes ? sanitizeInput(notes) : '';
 
       // FIX: Generate a unique ID for new events, use existing ID for edits
