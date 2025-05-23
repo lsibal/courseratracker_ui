@@ -5,7 +5,8 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Menu, 
-  Plus
+  Plus,
+  Info
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/server';
@@ -14,6 +15,7 @@ import { db } from '../../firebase/database';
 import SlotSelectionModal from '../Modals/SlotSelectionModal';
 import EventViewModal from '../Modals/EventViewModal';
 import EventFormModal from '../Modals/EventFormModal';
+import LegendViewModal from '../Modals/LegendViewModal';
 import { SLOT_COLORS, DEPARTMENT_COLORS } from './constants';
 import { sanitizeInput } from '../../utils/sanitize';
 import CalendarService from '../../services/CalendarService';
@@ -76,6 +78,7 @@ export default function CalendarView({
   const [eventCreators, setEventCreators] = useState<Record<string, {department: string}>>({});
   const [courseraLink, setCourseraLink] = useState('');
   const [notes, setNotes] = useState('');
+  const [showLegendModal, setShowLegendModal] = useState(false);
 
   const { currentUser } = useAuth();
 
@@ -428,6 +431,15 @@ export default function CalendarView({
               Today
             </button>
           </div>
+
+          {/* Add Legend Button */}
+          <button 
+            onClick={() => setShowLegendModal(true)} 
+            className="ml-4 bg-gray-100 text-gray-700 px-3 py-1 rounded-md flex items-center hover:bg-gray-200 transition-colors"
+            title="View Department Colors"
+          >
+            <Info size={18} className="mr-1" /> Legend
+          </button>
           
           <button 
             onClick={() => {
@@ -502,6 +514,11 @@ export default function CalendarView({
         onEdit={handleEdit}
         onDelete={handleDeleteEvent}
         canEdit={currentUser?.uid === selectedEvent?.createdBy}
+      />
+
+      <LegendViewModal
+        isOpen={showLegendModal}
+        onClose={() => setShowLegendModal(false)}
       />
     </div>
   );
