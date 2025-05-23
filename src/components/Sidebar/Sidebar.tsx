@@ -183,28 +183,39 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
                 if (filteredEvents.length === 0) return null;
 
                 return (
-                  <div key={slot} className="mb-1">
+                  <div key={slot} className="mb-3">
+                    {/* Add slot header */}
+                    <div className="text-xs font-semibold text-gray-500 mb-2 px-2">
+                      {slot}
+                    </div>
                     {filteredEvents.map((event) => (
                       <div 
                         key={event.id}
-                        className="rounded-lg overflow-hidden mb-2 border border-gray-200"
+                        className="rounded-lg overflow-hidden mb-2 hover:transform hover:scale-[1.02] transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
                         onClick={() => handleEventClick(event)}
                       >
                         <div 
-                          className="p-3 cursor-pointer"
+                          className="p-4 border-l-4"
                           style={{
-                            backgroundColor: DEPARTMENT_COLORS[eventCreators[event.createdBy]?.department as keyof typeof DEPARTMENT_COLORS] || '#808080',
-                            opacity: 0.9
+                            backgroundColor: 'white',
+                            borderLeftColor: DEPARTMENT_COLORS[eventCreators[event.createdBy]?.department as keyof typeof DEPARTMENT_COLORS] || '#808080',
                           }}
                         >
-                          <div className="text-white">
-                            <div className="font-medium text-sm">{event.title}</div>
-                            <div className="text-xs opacity-90">{formatDateRange(event.start, event.end)}</div>
-                            <div className="text-xs mt-1 opacity-80">
+                          <div className="text-gray-800">
+                            <div className="font-medium text-sm mb-1">{event.title}</div>
+                            <div className="text-xs text-gray-500 flex items-center gap-2">
+                              <Calendar className="h-3 w-3" />
+                              {formatDateRange(event.start, event.end)}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                              <div className="h-2 w-2 rounded-full" style={{
+                                backgroundColor: DEPARTMENT_COLORS[eventCreators[event.createdBy]?.department as keyof typeof DEPARTMENT_COLORS] || '#808080'
+                              }} />
                               {eventCreators[event.createdBy]?.name || 'Loading...'}
                               {eventCreators[event.createdBy] && (
-                                <> • {eventCreators[event.createdBy].department}</>
+                                <span className="text-gray-400">•</span>
                               )}
+                              <span className="text-gray-400">{eventCreators[event.createdBy]?.department}</span>
                             </div>
                           </div>
                         </div>
@@ -217,28 +228,39 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
           </div>
 
           {/* Footer section - fixed at bottom */}
-          <div className="p-5 border-t border-[#0000005c] bg-white space-y-3">
+          <div className="p-5 border-t border-gray-200 bg-white space-y-3">
             {/* User Profile */}
-            <div 
-              className="flex items-center p-2 rounded"
-              style={{ 
-                backgroundColor: DEPARTMENT_COLORS[userProfile?.department as keyof typeof DEPARTMENT_COLORS] || '#808080',
-                opacity: 0.9
-              }}
-            >
-              <div>
-                <p className="text-sm font-medium text-white">{userProfile?.name || 'User'}</p>
-                <p className="text-xs text-white/80">{userProfile?.department}</p>
+            <div className="rounded-lg overflow-hidden shadow-sm">
+              <div 
+                className="p-4 relative"
+                style={{ 
+                  backgroundColor: DEPARTMENT_COLORS[userProfile?.department as keyof typeof DEPARTMENT_COLORS] || '#808080',
+                }}
+              >
+                <div className="relative z-10">
+                  <p className="text-sm font-medium text-white mb-1">{userProfile?.name || 'User'}</p>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-white/50" />
+                    <p className="text-xs text-white/90">{userProfile?.department}</p>
+                  </div>
+                </div>
+                <div 
+                  className="absolute inset-0 opacity-10 bg-gradient-to-br from-white/20 to-transparent"
+                  style={{
+                    backgroundSize: '400% 400%',
+                    animation: 'gradient 15s ease infinite',
+                  }}
+                />
               </div>
             </div>
 
             {/* Logout Button */}
             <button 
-              className="w-full rounded bg-red-500 text-white p-2 flex items-center justify-center hover:bg-red-600 space-x-2"
+              className="w-full rounded-lg bg-white border border-red-500 text-red-500 p-3 flex items-center justify-center hover:bg-red-50 transition-colors duration-200 space-x-2"
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4" />
-              <span className="text-sm">Sign out</span>
+              <span className="text-sm font-medium">Sign out</span>
             </button>
           </div>
         </div>
