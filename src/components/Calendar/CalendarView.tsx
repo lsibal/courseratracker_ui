@@ -247,14 +247,16 @@ export default function CalendarView({
 
     try {
       await CalendarService.updateScheduleStatus(eventId, 'CANCELLED');
-      // The event will be removed from Firebase automatically
-      // Just update the UI by filtering out the cancelled event
-      setEvents(events.filter(e => e.id !== eventId));
+      
+      // Close the modal and clear selected event
       setShowViewModal(false);
       setSelectedEvent(null);
+      
+      // The fetchEvents listener will automatically update the UI
+      // since we're filtering out CANCELLED events
     } catch (error: any) {
-      console.error('Error deleting event:', error);
-      alert('Failed to delete event. Please try again.');
+      console.error('Error cancelling event:', error);
+      alert('Failed to cancel event. Please try again.');
     }
   };
 
@@ -268,14 +270,18 @@ export default function CalendarView({
         
         snapshot.forEach((childSnapshot) => {
           const event = childSnapshot.val();
-          const reconstructedEvent: Event = {
-            ...event,
-            start: new Date(event.start),
-            end: new Date(event.end)
-          };
+          
+          // Only include events with status "CREATED"
+          if (event.status === 'CREATED') {
+            const reconstructedEvent: Event = {
+              ...event,
+              start: new Date(event.start),
+              end: new Date(event.end)
+            };
 
-          if (!isNaN(reconstructedEvent.start.getTime()) && !isNaN(reconstructedEvent.end.getTime())) {
-            fetchedEvents.push(reconstructedEvent);
+            if (!isNaN(reconstructedEvent.start.getTime()) && !isNaN(reconstructedEvent.end.getTime())) {
+              fetchedEvents.push(reconstructedEvent);
+            }
           }
         });
         
@@ -317,15 +323,18 @@ export default function CalendarView({
           const fetchedEvents: Event[] = [];
           snapshot.forEach((childSnapshot) => {
             const event = childSnapshot.val();
-            // Ensure proper date conversion
-            const reconstructedEvent: Event = {
-              ...event,
-              start: new Date(event.start),
-              end: new Date(event.end)
-            };
+            
+            // Only include CREATED events
+            if (event.status === 'CREATED') {
+              const reconstructedEvent: Event = {
+                ...event,
+                start: new Date(event.start),
+                end: new Date(event.end)
+              };
 
-            if (!isNaN(reconstructedEvent.start.getTime()) && !isNaN(reconstructedEvent.end.getTime())) {
-              fetchedEvents.push(reconstructedEvent);
+              if (!isNaN(reconstructedEvent.start.getTime()) && !isNaN(reconstructedEvent.end.getTime())) {
+                fetchedEvents.push(reconstructedEvent);
+              }
             }
           });
           

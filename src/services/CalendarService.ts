@@ -143,22 +143,15 @@ export class CalendarService {
         throw new Error('No Hourglass ID found for this schedule');
       }
 
-      // If status is CANCELLED, update Hourglass first then remove from Firebase
-      if (status === 'CANCELLED') {
-        const hourglassData = {
-          id: eventData.hourglassId,
-          status: "CANCELLED"
-        };
-
-        // Update Hourglass first
-        await api.put(`/api/schedules/${eventData.hourglassId}/status`, hourglassData);
-        
-        // Then remove from Firebase
-        await remove(eventRef);
-      } else {
-        // For other statuses, just update Firebase
-        await set(eventRef, { ...eventData, status });
-      }
+      // Update Hourglass first
+      const hourglassData = {
+        id: eventData.hourglassId,
+        status: status
+      };
+      await api.put(`/api/schedules/${eventData.hourglassId}/status`, hourglassData);
+      
+      // Update Firebase with new status instead of removing
+      await set(eventRef, { ...eventData, status });
 
       return true;
     } catch (error) {
