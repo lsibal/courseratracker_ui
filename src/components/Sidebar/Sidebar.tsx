@@ -53,7 +53,8 @@ export default function Sidebar({ isOpen, onFilterChange }: SidebarProps) {
 
       snapshot.forEach((childSnapshot) => {
         const event = childSnapshot.val();
-        if (event.slotNumber) {
+        // Only include events with status "CREATED"
+        if (event.status === 'CREATED' && event.slotNumber) {
           events[event.slotNumber].push({
             id: childSnapshot.key,
             slotNumber: event.slotNumber,
