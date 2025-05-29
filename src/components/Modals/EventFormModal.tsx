@@ -144,6 +144,7 @@ export default function EventFormModal({
       isOpen={isOpen} 
       onClose={onClose}
       title={`${isEditing ? 'Edit' : 'Enter'} course details`}
+      width="wide"
     >
       <div className="space-y-4">
         {/* Debug info to help troubleshoot */}

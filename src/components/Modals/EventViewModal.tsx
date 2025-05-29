@@ -52,7 +52,11 @@ export default function EventViewModal({
   if (!event) return null;
 
   return (
-    <BaseModal isOpen={isOpen} onClose={onClose}>
+    <BaseModal 
+      isOpen={isOpen} 
+      onClose={onClose}
+      width="wide"
+    >
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">{event.title}</h2>
         <div className="flex items-center space-x-2">
