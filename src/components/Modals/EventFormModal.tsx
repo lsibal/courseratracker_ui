@@ -34,6 +34,14 @@ interface EventFormModalProps {
   selectedEvent?: Event | null;
   notes?: string;
   onNotesChange: (notes: string) => void;
+  // New props for custom course creation
+  isCreatingCustomCourse?: boolean;
+  onToggleCustomCourse?: (creating: boolean) => void;
+  customCourseName?: string;
+  onCustomCourseNameChange?: (name: string) => void;
+  customCourseDescription?: string;
+  onCustomCourseDescriptionChange?: (description: string) => void;
+  onCreateCustomCourse?: () => void;
 }
 
 export default function EventFormModal({
@@ -55,6 +63,14 @@ export default function EventFormModal({
   selectedEvent,
   notes = '',
   onNotesChange,
+  // New props with defaults
+  isCreatingCustomCourse = false,
+  onToggleCustomCourse = () => {},
+  customCourseName = '',
+  onCustomCourseNameChange = () => {},
+  customCourseDescription = '',
+  onCustomCourseDescriptionChange = () => {},
+  onCreateCustomCourse = () => {},
 }: EventFormModalProps) {
   const [courseraError, setCourseraError] = useState<string>('');
 
@@ -154,24 +170,71 @@ export default function EventFormModal({
           </div>
         )}
 
-        {/* Course select */}
+        {/* Course selection section */}
         <div>
-          <label htmlFor="course-name" className="block text-sm font-medium text-gray-700 mb-1">
-            Course Name
-          </label>
-          <select
-            id="course-name"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            value={selectedCourse}
-            onChange={handleCourseSelect}
-          >
-            <option value="" disabled>Select a course</option>
-            {courses.map((course) => (
-              <option key={course.id} value={course.name}>
-                {course.name}
-              </option>
-            ))}
-          </select>
+          <div className="flex justify-between items-center mb-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Course
+            </label>
+            <button
+              type="button"
+              onClick={() => onToggleCustomCourse(!isCreatingCustomCourse)}
+              className="text-sm text-blue-600 hover:text-blue-800 underline"
+            >
+              {isCreatingCustomCourse ? 'Select from list' : 'Create new course'}
+            </button>
+          </div>
+          
+          {isCreatingCustomCourse ? (
+            <div className="space-y-3 p-4 border border-gray-200 rounded-md bg-gray-50">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Course Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={customCourseName}
+                  onChange={(e) => onCustomCourseNameChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter course name (e.g., ML-101)"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Course Description <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={customCourseDescription}
+                  onChange={(e) => onCustomCourseDescriptionChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter course description"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={onCreateCustomCourse}
+                disabled={!customCourseName.trim() || !customCourseDescription.trim()}
+                className="w-full bg-green-500 text-white px-4 py-2 rounded-md disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-green-600 transition-colors"
+              >
+                Create Course & Select
+              </button>
+            </div>
+          ) : (
+            <select
+              id="course-name"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              value={selectedCourse}
+              onChange={handleCourseSelect}
+            >
+              <option value="" disabled>Select a course</option>
+              {courses.map((course) => (
+                <option key={course.id} value={course.name}>
+                  {course.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Slot display (read-only) */}
@@ -187,7 +250,7 @@ export default function EventFormModal({
           <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
           <input
             type="date"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             value={startDate}
             min={moment().add(1, 'days').format('YYYY-MM-DD')}
             onChange={(e) => onStartDateChange(e.target.value)}
@@ -197,7 +260,7 @@ export default function EventFormModal({
           <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
           <input
             type="date"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             value={endDate}
             min={startDate || moment().add(1, 'days').format('YYYY-MM-DD')}
             onChange={(e) => onEndDateChange(e.target.value)}
@@ -215,8 +278,8 @@ export default function EventFormModal({
             value={courseraLink}
             onChange={(e) => handleCourseraLinkChange(e.target.value)}
             required
-            className={`w-full px-3 py-2 border rounded-md ${
-              courseraError ? 'border-red-500' : 'border-gray-300'
+            className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
+              courseraError ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'
             }`}
             placeholder="https://www.coursera.org/..."
           />
@@ -234,24 +297,24 @@ export default function EventFormModal({
             id="notes"
             value={notes}
             onChange={(e) => onNotesChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md min-h-[100px] resize-y"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md min-h-[100px] resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Add any additional notes here..."
           />
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex justify-end space-x-2 pt-4">
           <button 
             onClick={onClose}
-            className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md mr-2"
+            className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
           >
             Cancel
           </button>
           <button 
             onClick={handleSave}
-            className="bg-blue-500 text-white px-4 py-2 rounded-md"
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             disabled={!selectedCourse || !startDate || !endDate || !courseraLink}
           >
-            Save
+            {isEditing ? 'Update' : 'Save'}
           </button>
         </div>
       </div>

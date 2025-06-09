@@ -34,6 +34,7 @@ interface Event {
   createdBy: string;
   department: string;
   courseraLink?: string;
+  notes?: string;
 }
 
 interface Timeslot {
@@ -57,6 +58,12 @@ interface CalendarViewProps {
   filterEvents: (events: Event[]) => Event[];
 }
 
+interface UserProfile {
+  name: string;
+  email: string;
+  department: string;
+}
+
 export default function CalendarView({ 
   toggleSidebar,
   filterEvents 
@@ -75,10 +82,13 @@ export default function CalendarView({
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [eventCreators, setEventCreators] = useState<Record<string, {department: string}>>({});
+  const [eventCreators, setEventCreators] = useState<Record<string, UserProfile>>({});
   const [courseraLink, setCourseraLink] = useState('');
   const [notes, setNotes] = useState('');
   const [showLegendModal, setShowLegendModal] = useState(false);
+  const [isCreatingCustomCourse, setIsCreatingCustomCourse] = useState(false);
+  const [customCourseName, setCustomCourseName] = useState('');
+  const [customCourseDescription, setCustomCourseDescription] = useState('');
 
   const { currentUser } = useAuth();
 
@@ -93,12 +103,12 @@ export default function CalendarView({
         if (snapshot.exists()) {
           setEventCreators(prev => ({
             ...prev,
-            [creatorId]: snapshot.val()
+            [creatorId]: snapshot.val() as UserProfile
           }));
         }
       }
     });
-  }, [events]);
+  }, [events, eventCreators]);
 
   const eventStyleGetter = (event: Event) => {
     const creatorDepartment = event.createdBy ? 
@@ -118,6 +128,19 @@ export default function CalendarView({
         boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
       }
     };
+  };
+
+  // Custom event component to show creator name and course
+  const CustomEvent = ({ event }: { event: Event }) => {
+    const creatorName = eventCreators[event.createdBy]?.name || 'Loading...';
+    
+    return (
+      <div className="text-xs">
+        <div className="font-medium">
+          {creatorName} - {event.title}
+        </div>
+      </div>
+    );
   };
 
   const generateTimeSlots = (date: Date) => {
@@ -173,6 +196,39 @@ export default function CalendarView({
     setSelectedCourseId(courseId);
   };
 
+  const handleCreateCustomCourse = async () => {
+    if (!customCourseName.trim() || !customCourseDescription.trim()) {
+      alert('Please fill in both course name and description');
+      return;
+    }
+
+    try {
+      const response = await api.post('/api/resources', {
+        name: customCourseName.trim(),
+        description: customCourseDescription.trim(),
+        externalId: Date.now().toString() // Use timestamp as unique external ID
+      });
+
+      const newCourse = response.data;
+      
+      // Add the new course to the courses list
+      setCourses(prevCourses => [...prevCourses, newCourse]);
+      
+      // Select the newly created course
+      handleCourseChange(newCourse.name, newCourse.id);
+      
+      // Clear custom course fields and switch back to select mode
+      setCustomCourseName('');
+      setCustomCourseDescription('');
+      setIsCreatingCustomCourse(false);
+      
+      alert('Course created successfully!');
+    } catch (error: any) {
+      console.error('Error creating course:', error);
+      alert('Failed to create course. Please try again.');
+    }
+  };
+
   const handleCreateEvent = async () => {
     if (!selectedDate || !selectedSlot || !startDate || !endDate || !selectedCourse || !courseraLink) return;
 
@@ -220,6 +276,9 @@ export default function CalendarView({
       setSelectedSlot('');
       setCourseraLink('');
       setNotes('');
+      setIsCreatingCustomCourse(false);
+      setCustomCourseName('');
+      setCustomCourseDescription('');
     } catch (error: any) {
       console.error('Error saving event:', error);
       alert(error.message || 'Failed to save event. Please try again.');
@@ -484,6 +543,9 @@ export default function CalendarView({
           onSelectSlot={handleDateSelect}
           views={['month']}
           toolbar={false}
+          components={{
+            event: CustomEvent
+          }}
         />
       </div>
 
@@ -513,7 +575,15 @@ export default function CalendarView({
         onCourseraLinkChange={setCourseraLink}
         notes={notes}
         onNotesChange={setNotes}
-        selectedEvent={selectedEvent} // Pass the selectedEvent to the modal
+        selectedEvent={selectedEvent}
+        // Add these new props
+        isCreatingCustomCourse={isCreatingCustomCourse}
+        onToggleCustomCourse={setIsCreatingCustomCourse}
+        customCourseName={customCourseName}
+        onCustomCourseNameChange={setCustomCourseName}
+        customCourseDescription={customCourseDescription}
+        onCustomCourseDescriptionChange={setCustomCourseDescription}
+        onCreateCustomCourse={handleCreateCustomCourse}
       />
 
       <EventViewModal
