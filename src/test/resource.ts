@@ -6,7 +6,7 @@ dotenv.config();
 
 const activeOnly = true;
 const resourceType = "Course"
-const serviceOfferingId = "7";
+const serviceOfferingId = "8";
 
 const testApiCall = async () => {
   try {

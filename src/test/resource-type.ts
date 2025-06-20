@@ -4,7 +4,7 @@ import api from '../utils/axios';
 
 dotenv.config();
 
-const serviceOfferingId = "7";
+const serviceOfferingId = "8";
 const courseName = "Course"
 
 const testApiCall = async () => {

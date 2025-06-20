@@ -357,7 +357,7 @@ export default function CalendarView({
         params: {
           activeOnly: true,
           resourceType: 'Course',
-          serviceOffering: '7'
+          serviceOffering: '8'
         }
       });
       setCourses(response.data);
