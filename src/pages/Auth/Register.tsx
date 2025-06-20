@@ -14,7 +14,7 @@ const DEPARTMENTS = {
 } as const;
 
 // Allowed email domains
-const ALLOWED_DOMAINS = ['shieldfoundry.com', 'egissystems.com'] as const;
+const ALLOWED_DOMAINS = ['shieldfoundry.com', 'egissys.com'] as const;
 
 type Department = keyof typeof DEPARTMENTS;
 
@@ -105,7 +105,7 @@ export default function Register() {
     }
 
     if (!validateEmailDomain(sanitizedEmail)) {
-      setError('Registration is restricted to shieldfoundry.com and egissystems.com email addresses only');
+      setError('Registration is restricted to shieldfoundry.com and egissys.com email addresses only');
       return;
     }
 
@@ -224,10 +224,10 @@ export default function Register() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3 py-2 bg-gray-100 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300"
-                  placeholder="user@shieldfoundry.com or user@egissystems.com"
+                  placeholder="user@shieldfoundry.com or user@egissys.com"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Only @shieldfoundry.com and @egissystems.com email addresses are allowed
+                  Only @shieldfoundry.com and @egissys.com email addresses are allowed
                 </p>
               </div>
 
