@@ -13,6 +13,9 @@ const DEPARTMENTS = {
   Others: 'Other Department'
 } as const;
 
+// Allowed email domains
+const ALLOWED_DOMAINS = ['shieldfoundry.com', 'egissystems.com'] as const;
+
 type Department = keyof typeof DEPARTMENTS;
 
 interface UserProfile {
@@ -74,6 +77,15 @@ export default function Register() {
     return emailRegex.test(email);
   };
 
+  const validateEmailDomain = (email: string) => {
+    if (!validateEmail(email)) {
+      return false;
+    }
+    
+    const domain = email.split('@')[1]?.toLowerCase();
+    return ALLOWED_DOMAINS.includes(domain as any);
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -89,6 +101,11 @@ export default function Register() {
 
     if (!validateEmail(sanitizedEmail)) {
       setError('Please enter a valid email address');
+      return;
+    }
+
+    if (!validateEmailDomain(sanitizedEmail)) {
+      setError('Registration is restricted to shieldfoundry.com and egissystems.com email addresses only');
       return;
     }
 
@@ -207,8 +224,11 @@ export default function Register() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3 py-2 bg-gray-100 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300"
-                  placeholder="user@example.com"
+                  placeholder="user@shieldfoundry.com or user@egissystems.com"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Only @shieldfoundry.com and @egissystems.com email addresses are allowed
+                </p>
               </div>
 
               <div className="mb-4">
