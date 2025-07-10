@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/server';
-import { ref, set, query, orderByChild, onValue, get, getDatabase } from 'firebase/database';
+import { ref, query, orderByChild, onValue, get, getDatabase } from 'firebase/database';
 import { db } from '../../firebase/database';
 import SlotSelectionModal from '../Modals/SlotSelectionModal';
 import EventViewModal from '../Modals/EventViewModal';
@@ -319,37 +319,38 @@ export default function CalendarView({
     }
   };
 
-  const fetchEvents = () => {
-    try {
-      const eventsRef = ref(db, 'events');
-      const eventsQuery = query(eventsRef, orderByChild('start'));
+  // COMMENT THIS OUT IF EVER 
+  // const fetchEvents = () => {
+  //   try {
+  //     const eventsRef = ref(db, 'events');
+  //     const eventsQuery = query(eventsRef, orderByChild('start'));
       
-      return onValue(eventsQuery, (snapshot) => {
-        const fetchedEvents: Event[] = [];
+  //     return onValue(eventsQuery, (snapshot) => {
+  //       const fetchedEvents: Event[] = [];
         
-        snapshot.forEach((childSnapshot) => {
-          const event = childSnapshot.val();
+  //       snapshot.forEach((childSnapshot) => {
+  //         const event = childSnapshot.val();
           
-          // Only include events with status "CREATED"
-          if (event.status === 'CREATED') {
-            const reconstructedEvent: Event = {
-              ...event,
-              start: new Date(event.start),
-              end: new Date(event.end)
-            };
+  //         // Only include events with status "CREATED"
+  //         if (event.status === 'CREATED') {
+  //           const reconstructedEvent: Event = {
+  //             ...event,
+  //             start: new Date(event.start),
+  //             end: new Date(event.end)
+  //           };
 
-            if (!isNaN(reconstructedEvent.start.getTime()) && !isNaN(reconstructedEvent.end.getTime())) {
-              fetchedEvents.push(reconstructedEvent);
-            }
-          }
-        });
+  //           if (!isNaN(reconstructedEvent.start.getTime()) && !isNaN(reconstructedEvent.end.getTime())) {
+  //             fetchedEvents.push(reconstructedEvent);
+  //           }
+  //         }
+  //       });
         
-        setEvents(fetchedEvents.sort((a, b) => a.start.getTime() - b.start.getTime()));
-      });
-    } catch (error) {
-      console.error('Failed to fetch events:', error);
-    }
-  };
+  //       setEvents(fetchedEvents.sort((a, b) => a.start.getTime() - b.start.getTime()));
+  //     });
+  //   } catch (error) {
+  //     console.error('Failed to fetch events:', error);
+  //   }
+  // };
 
   const fetchCourses = async () => {
     try {

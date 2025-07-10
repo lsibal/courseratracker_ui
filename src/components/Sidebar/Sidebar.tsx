@@ -1,4 +1,4 @@
-import { Calendar, LogOut, Filter, X } from 'lucide-react';
+import { Calendar, LogOut, Filter } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';

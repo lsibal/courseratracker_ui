@@ -1,4 +1,3 @@
-import { useAuth } from '../../context/AuthContext';
 import { DEPARTMENT_COLORS } from '../Calendar/constants';
 import BaseModal from './BaseModal';
 import moment from 'moment';

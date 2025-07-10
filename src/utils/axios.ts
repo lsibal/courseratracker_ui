@@ -1,6 +1,6 @@
 import axios from 'axios';
 import * as dotenv from 'dotenv';
-import { sanitizeObject } from './sanitize';
+import { sanitizeObject, sanitizeInput } from './sanitize';
 
 dotenv.config();
 

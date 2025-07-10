@@ -1,16 +1,16 @@
 import { db } from '../firebase/database';
-import { ref, set, get, remove, query, orderByChild, equalTo, onValue } from 'firebase/database';
+import { ref, set, get, query, orderByChild, equalTo, onValue } from 'firebase/database';
 import api from '../utils/server';
 
-interface HourglassSchedule {
-  resources: {
-    id: number;
-  }[];
-  timeslot: {
-    start: string;
-    end: string;
-  };
-}
+// interface HourglassSchedule {
+//   resources: {
+//     id: number;
+//   }[];
+//   timeslot: {
+//     start: string;
+//     end: string;
+//   };
+// }
 
 export class CalendarService {
   // Check if a slot is already booked for date range
