@@ -20,12 +20,15 @@ export interface Event {
   id: string;
   title: string;
   department: keyof typeof DEPARTMENT_COLORS;
+  slotNumber: keyof typeof SLOT_COLORS;
   start: Date;
   end: Date;
   timeslot: Timeslot;
   resources: Resource[];
   attendees?: number;
   createdBy: string;
+  courseraLink?: string; // <-- Add this if missing
+  notes?: string;        // <-- Add this if missing
 }
 
 export interface Timeslot {

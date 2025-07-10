@@ -128,11 +128,11 @@ export default function Register() {
         throw new Error('Registration failed - no user returned');
       }
 
-      const profile: UserProfile = {
-        name: sanitizedName,
-        email: sanitizedEmail,
-        department
-      };
+      // const profile: UserProfile = {
+      //   name: sanitizedName,
+      //   email: sanitizedEmail,
+      //   department
+      // };
 
       await saveUserProfile(response.user.uid);
       navigate('/dashboard');

@@ -84,7 +84,7 @@ export default function EventViewModal({
       <div className="space-y-4">
         <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
           <div className="h-4 w-4 rounded-full" style={{ 
-            backgroundColor: SLOT_COLORS[event.slotNumber]
+            backgroundColor: SLOT_COLORS[event.slotNumber as keyof typeof SLOT_COLORS]
           }} />
           <span className="font-medium">{event.slotNumber}</span>
         </div>

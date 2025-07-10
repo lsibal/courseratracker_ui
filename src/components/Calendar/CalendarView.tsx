@@ -25,6 +25,7 @@ const localizer = momentLocalizer(moment);
 interface Event {
   id: string;
   title: string;
+  department: keyof typeof DEPARTMENT_COLORS;
   slotNumber: keyof typeof SLOT_COLORS;
   start: Date;
   end: Date;
@@ -32,7 +33,6 @@ interface Event {
   resources: Resource[];
   attendees?: number;
   createdBy: string;
-  department: string;
   courseraLink?: string;
   notes?: string;
 }
